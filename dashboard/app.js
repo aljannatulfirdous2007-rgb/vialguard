@@ -476,7 +476,7 @@ const FAC = [
 let map = null, mapLayers = null, truck = null;
 function initMap() {
   if (map || typeof L === "undefined") { if (typeof L === "undefined") $("mapPanel").hidden = true; return; }
-  map = L.map("map", { zoomControl: true, attributionControl: true, scrollWheelZoom: false }).setView([12.7, 79.7], 9);
+  map = L.map("map", { zoomControl: true, attributionControl: true, scrollWheelZoom: false, zoomSnap: 0.25 }).setView([12.7, 79.7], 9);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 14, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   }).addTo(map);
@@ -484,16 +484,18 @@ function initMap() {
     .bindTooltip(name, { direction: "top" }).addTo(map));
   mapLayers = L.layerGroup().addTo(map);
   truck = L.marker([13.0733, 80.2610], { icon: L.divIcon({ className: "", html: '<div class="vg-truck"><i class="ph-fill ph-truck"></i></div>', iconSize: [34, 34], iconAnchor: [17, 17] }) }).addTo(map);
-  map.fitBounds(FAC.map((f) => [f[2], f[3]]), { padding: [24, 24] });
+  // frame the route whenever the panel gets its real size (it can be 0 px tall while the page lays out)
+  const fit = () => { if (map._vgTouched) return; map.invalidateSize(); map.fitBounds(FAC.map((f) => [f[2], f[3]]), { padding: [24, 24] }); };
+  ["pointerdown", "wheel", "touchstart"].forEach((ev) => $("map").addEventListener(ev, () => { map._vgTouched = true; }, { passive: true }));
+  new ResizeObserver(fit).observe($("map"));
 }
 function renderMap(s) {
   if (!map || !s.trip || !s.trip.pos) return;
-  if (!map._vgFitted) { map.invalidateSize(); map.fitBounds(FAC.map((f) => [f[2], f[3]]), { padding: [30, 30] }); map._vgFitted = true; }
   const pos = [s.trip.pos.lat, s.trip.pos.lon];
   const dest = FAC.find((f) => f[0] === s.trip.dest_id);
   mapLayers.clearLayers();
   if (dest) L.polyline([pos, [dest[2], dest[3]]], { color: css("--hud"), weight: 4, opacity: .85 }).addTo(mapLayers);
-  const rr = s.forecast && s.forecast.reroute && FAC.find((f) => f[0] === s.forecast.reroute.id);
+  const rr = s.forecast && !s.forecast.will_survive && s.forecast.reroute && FAC.find((f) => f[0] === s.forecast.reroute.id);
   if (rr) L.polyline([pos, [rr[2], rr[3]]], { color: css("--warn"), weight: 4, dashArray: "8 8" }).addTo(mapLayers)
     .bindTooltip(`Divert: ${rr[1]}`, { permanent: true, direction: "center", className: "" });
   truck.setLatLng(pos);
