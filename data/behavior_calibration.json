@@ -1,0 +1,16 @@
+{
+  "dataset": "zenodo.22101912",
+  "readings": 10907,
+  "openings": 17,
+  "tolerance_min": 4.0,
+  "best": {
+    "jump_c": 1.0,
+    "window_min": 2.0,
+    "tp": 10,
+    "fp": 13,
+    "fn": 7,
+    "precision": 0.435,
+    "recall": 0.588,
+    "f1": 0.5
+  }
+}

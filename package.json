@@ -1,0 +1,9 @@
+{
+  "name": "vialguard",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node tests/chain.test.js && python -m unittest discover -s model -v",
+    "local": "python simulator/simulate.py --local"
+  }
+}

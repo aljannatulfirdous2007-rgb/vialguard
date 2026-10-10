@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VialGuard HUD</title>
+  <meta name="description" content="Live drug viability monitoring for the cold chain.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23040a10'/%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%2341f0ff' stroke-width='2' stroke-dasharray='4 3'/%3E%3Crect x='12.5' y='8' width='7' height='16' rx='2' fill='none' stroke='%2341f0ff' stroke-width='1.6'/%3E%3Crect x='13.5' y='15' width='5' height='8' fill='%2341f0ff'/%3E%3C/svg%3E">
+  <link rel="preload" href="vendor/fonts/oxanium-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="vendor/fonts/jetbrains-mono-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="vendor/phosphor/style.css">
+  <link rel="stylesheet" href="vendor/phosphor/fill.css">
+  <link rel="stylesheet" href="style.css?v=3">
+  <script>
+    try { document.documentElement.dataset.theme = localStorage.getItem("vg-hud-theme") === "dark" ? "dark" : "light"; } catch (e) { document.documentElement.dataset.theme = "light"; }
+  </script>
+  <script src="vendor/chart.umd.min.js" defer></script>
+  <script src="chain.js?v=3" defer></script>
+  <script src="engine.js?v=3" defer></script>
+  <script src="app.js?v=3" defer></script>
+</head>
+<body data-verdict="idle">
+  <div class="fx-grid" aria-hidden="true"></div>
+  <div class="fx-sweep" aria-hidden="true"></div>
+
+  <!-- ============================================================ top bar -->
+  <header class="bar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div>
+        <strong>VIALGUARD</strong>
+        <span>COLD-CHAIN VIABILITY // OPS CONSOLE</span>
+      </div>
+    </div>
+    <nav class="tabs" id="drugSeg" aria-label="Drug profile">
+      <button data-drug="demo" aria-pressed="true">DEMO</button>
+      <button data-drug="insulin" aria-pressed="false">INSULIN</button>
+      <button data-drug="vvm7" aria-pressed="false">VACCINE VVM7</button>
+      <button data-drug="vvm2" aria-pressed="false">VACCINE VVM2</button>
+    </nav>
+    <div class="bar-right">
+      <span id="demo" class="chip" hidden><i class="ph ph-fast-forward"></i><span></span></span>
+      <span class="rec" id="conn" role="status"><span class="led"></span><b>LINKING</b></span>
+      <span class="clock mono" id="clock">--:--:--</span>
+      <button id="newShip" class="hud-btn" title="Start a new shipment"><i class="ph ph-package"></i>NEW SHIPMENT</button>
+      <button id="themeBtn" class="hud-btn icon" aria-label="Switch light or dark"><i class="ph ph-moon"></i></button>
+      <button id="settingsBtn" class="hud-btn icon" aria-label="Connection settings"><i class="ph ph-plugs-connected"></i></button>
+    </div>
+  </header>
+
+  <div class="alarm" id="alarm" role="alert"><i class="ph-fill ph-warning"></i><span id="alarmText">DISCARD // DO NOT ADMINISTER</span><i class="ph-fill ph-warning"></i></div>
+
+  <main class="hud">
+    <!-- ============================================================ left: viability -->
+    <section class="panel viab">
+      <header class="ph-head"><span>◢ VIABILITY</span><span class="mono" id="drugName">NO SIGNAL</span></header>
+      <div class="viab-num"><span id="budget">100</span><small>%</small></div>
+      <div class="viab-cap">MEDICINE LIFE REMAINING</div>
+      <div class="status-word" id="verdict">STANDBY</div>
+      <p class="status-line" id="verdictSub">Waiting for device telemetry. Run the simulator or power on the box.</p>
+      <dl class="kv">
+        <div><dt>TIME TO EXPIRY</dt><dd id="hoursLeft">--</dd></div>
+        <div><dt>KINETIC TEMP</dt><dd id="mkt">--</dd></div>
+        <div><dt>LID SEAL</dt><dd id="lid">--</dd></div>
+        <div><dt>SHIPMENT</dt><dd class="mono" id="ship">--</dd></div>
+      </dl>
+    </section>
+
+    <!-- ============================================================ centre: hologram -->
+    <section class="holo" aria-label="Holographic vial">
+      <svg class="rings" viewBox="0 0 600 600" aria-hidden="true">
+        <defs>
+          <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="4" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <linearGradient id="arcGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" class="arc-a"/><stop offset="1" class="arc-b"/>
+          </linearGradient>
+        </defs>
+        <g class="ring r-outer"><circle cx="300" cy="300" r="286" fill="none" stroke-width="1.2" stroke-dasharray="2 10"/></g>
+        <g class="ring r-ticks"><circle cx="300" cy="300" r="270" fill="none" stroke-width="8" stroke-dasharray="1.2 13.94"/></g>
+        <circle class="arc-track" cx="300" cy="300" r="248" fill="none" stroke-width="12"/>
+        <circle id="arc" class="arc" cx="300" cy="300" r="248" fill="none" stroke-width="12" stroke-dasharray="1558.23" stroke-dashoffset="1558.23" transform="rotate(-90 300 300)" filter="url(#glow)"/>
+        <g class="ring r-mid"><circle cx="300" cy="300" r="224" fill="none" stroke-width="2" stroke-dasharray="60 18 8 18"/></g>
+        <g class="ring r-inner"><circle cx="300" cy="300" r="205" fill="none" stroke-width="1" stroke-dasharray="120 40"/></g>
+        <g class="ring-labels">
+          <text x="300" y="38">100</text><text x="568" y="304">25</text><text x="300" y="574">50</text><text x="32" y="304">75</text>
+        </g>
+      </svg>
+
+      <svg class="vial" id="vial" viewBox="0 0 260 520" role="img" aria-label="Vial hologram showing medicine life">
+        <defs>
+          <linearGradient id="liquidFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" class="liq-top"/><stop offset="1" class="liq-bottom"/>
+          </linearGradient>
+          <pattern id="scan" width="4" height="5" patternUnits="userSpaceOnUse">
+            <rect width="4" height="1.4" fill="#fff" opacity=".18"/>
+          </pattern>
+          <clipPath id="innerClip">
+            <path d="M92 96 H168 V120 C168 140 216 142 216 176 V452 C216 470 204 480 188 480 H72 C56 480 44 470 44 452 V176 C44 142 92 140 92 120 Z"/>
+          </clipPath>
+          <filter id="frost" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="8"/>
+            <feColorMatrix values="0 0 0 0 .85  0 0 0 0 .97  0 0 0 0 1  0 0 0 1.7 -0.6"/>
+          </filter>
+          <filter id="vglow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <ellipse class="base-glow" cx="130" cy="500" rx="110" ry="12"/>
+        <path class="v-fill" d="M86 92 H174 V118 C174 136 222 138 222 174 V454 C222 476 206 488 188 488 H72 C54 488 38 476 38 454 V174 C38 138 86 136 86 118 Z"/>
+        <g clip-path="url(#innerClip)">
+          <g id="liquidMove" class="liquid-move">
+            <g class="liquid" id="liquid">
+              <path class="wave back" d="M-260 0 q26 -8 52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 V420 H-260 Z"/>
+              <path class="wave front" d="M-260 0 q26 -6 52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 t52 0 V420 H-260 Z"/>
+              <rect x="40" y="0" width="180" height="420" fill="url(#scan)"/>
+              <line class="level-line" x1="44" x2="216" y1="0" y2="0"/>
+            </g>
+          </g>
+          <rect class="frost" x="38" y="90" width="190" height="400" filter="url(#frost)"/>
+        </g>
+        <g class="v-outline" filter="url(#vglow)">
+          <path d="M86 92 H174 V118 C174 136 222 138 222 174 V454 C222 476 206 488 188 488 H72 C54 488 38 476 38 454 V174 C38 138 86 136 86 118 Z"/>
+          <rect x="70" y="26" width="120" height="64" rx="8"/>
+          <rect x="82" y="6" width="96" height="24" rx="6"/>
+          <line x1="70" y1="78" x2="190" y2="78"/>
+        </g>
+        <g class="v-ticks">
+          <line x1="196" x2="214" y1="180" y2="180"/><line x1="204" x2="214" y1="255" y2="255"/>
+          <line x1="196" x2="214" y1="330" y2="330"/><line x1="204" x2="214" y1="405" y2="405"/>
+        </g>
+        <path class="v-shine" d="M58 186 V440"/>
+      </svg>
+
+      <div class="holo-readout">
+        <span class="mono" id="levelTag">▸ LIFE --%</span>
+      </div>
+      <div class="stamp" id="stamp" aria-hidden="true"><span id="stampText">DISCARD</span></div>
+    </section>
+
+    <!-- ============================================================ right: probe + alerts -->
+    <section class="panel probe">
+      <header class="ph-head"><span>◢ PROBE-01</span><span class="mono" id="tempState">IN RANGE</span></header>
+      <div class="temp"><span id="temp">0.0</span><sup>°C</sup></div>
+      <div class="thermo" id="thermo" aria-hidden="true"></div>
+      <div class="thermo-scale mono" aria-hidden="true"><span>-10</span><span>0</span><span class="safe">2-8</span><span>20</span><span>45</span></div>
+      <div class="spark-wrap"><canvas id="spark" aria-hidden="true"></canvas></div>
+
+      <header class="ph-head sub"><span>◢ ALERT LADDER</span><span class="mono" id="alertState">IDLE</span></header>
+      <p class="alert-reason" id="alertReason">Escalates courier to pharmacist to QA head when nobody responds.</p>
+      <ol class="ladder" id="ladder">
+        <li data-l="0"><span class="node"><i class="ph ph-truck"></i></span><span class="who">COURIER</span><span class="when mono">T+0</span></li>
+        <li data-l="1"><span class="node"><i class="ph ph-first-aid-kit"></i></span><span class="who">PHARMACIST</span><span class="when mono">IF NO ACK</span></li>
+        <li data-l="2"><span class="node"><i class="ph ph-shield-check"></i></span><span class="who">QA HEAD</span><span class="when mono">FINAL</span></li>
+      </ol>
+      <button id="ackBtn" class="ack" disabled><span>ACKNOWLEDGE</span><kbd>A</kbd></button>
+    </section>
+
+    <!-- ============================================================ simulation control -->
+    <section class="panel control" aria-label="Simulation control">
+      <header class="ph-head"><span>◢ SIMULATION CONTROL // VIRTUAL SHIPMENT</span><span class="mono" id="ctlHint">CLICK TO CHANGE WHAT THE PACKAGE EXPERIENCES</span></header>
+      <div class="ctl-row">
+        <div class="ctl-group" role="group" aria-label="Surroundings">
+          <button class="ctl" data-env="cold"><i class="ph ph-snowflake"></i><b>COLD BOX</b><span>5 °C, normal transport</span></button>
+          <button class="ctl" data-env="room"><i class="ph ph-sun-dim"></i><b>LEFT OUT</b><span id="leftOutSub">real outdoor temp now</span></button>
+          <button class="ctl hot" data-env="heat"><i class="ph ph-truck"></i><b>TRUCK STALL</b><span>45 °C in the sun</span></button>
+          <button class="ctl ice" data-env="freeze"><i class="ph ph-thermometer-cold"></i><b>ICE PACK</b><span>-6 °C, accidental freeze</span></button>
+        </div>
+        <div class="ctl-group small" role="group" aria-label="Events">
+          <button class="ctl" id="lidBtn"><i class="ph ph-lock-simple-open"></i><b>OPEN LID</b><span>who broke the chain</span></button>
+          <button class="ctl danger" id="tamperBtn"><i class="ph ph-pencil-simple-slash"></i><b>FAKE A RECORD</b><span>try to hide the excursion</span></button>
+        </div>
+        <div class="ctl-group replay" role="group" aria-label="Field trace">
+          <button class="ctl wide" id="realBtn"><i class="ph ph-database"></i><b>REPLAY REAL FRIDGE DATA</b><span id="realSub">24 h, hospital, Zenodo</span></button>
+          <button class="ctl wide" id="replayBtn"><i class="ph ph-film-strip"></i><b>REPLAY 72 H FIELD TRACE</b><span id="replaySub">store, power cut, road, PHC fridge</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ predict & act -->
+    <section class="panel fc" aria-label="Arrival forecast">
+      <header class="ph-head"><span>◢ ARRIVAL FORECAST</span><span class="mono" id="wxSrc">WEATHER --</span></header>
+      <div class="route mono"><span id="rtFrom">--</span><i class="ph ph-arrow-right"></i><span id="rtTo">--</span></div>
+      <div class="route-bar"><div id="rtBar"></div><i id="rtDot" class="ph-fill ph-truck"></i></div>
+      <div class="route-meta mono"><span id="rtEta">ETA --</span><span id="rtKm">--</span></div>
+      <div class="fc-big"><b id="fcLife">--</b><small>%</small><span>predicted medicine life<br>on arrival</span></div>
+      <p class="fc-note" id="fcNote">Physics forecast: probe trend + live outdoor temperature on the route.</p>
+    </section>
+
+    <section class="panel integ" aria-label="Courier integrity">
+      <header class="ph-head"><span>◢ CUSTODY INTEGRITY</span><span class="mono" id="integMode">LIVE SHIPMENT</span></header>
+      <div class="trust"><b id="trust">100</b><span>/100<br>custody score</span></div>
+      <dl class="kv" id="integKv">
+        <div><dt>LOGGED OPENINGS</dt><dd id="inLogged">0</dd></div>
+        <div><dt>UNLOGGED OPENINGS</dt><dd id="inUnlogged">0</dd></div>
+        <div><dt>COOLING FAILURES</dt><dd id="inCooling">0</dd></div>
+      </dl>
+      <p class="fc-note" id="integNote">Score drops 12 for each opening with no logged reason and 25 for each cooling failure. Openings are detected from the temperature signature, so a tampered lid sensor cannot hide them.</p>
+      <div class="realscore" id="realScore" hidden>
+        <div class="rs-title mono">REAL HOSPITAL FRIDGE // DOOR LABELS NEVER SHOWN TO THE DETECTOR</div>
+        <div class="rs-grid">
+          <div><b id="rsLabels">0</b><span>real door openings</span></div>
+          <div class="good"><b id="rsMatched">0</b><span>caught from temperature</span></div>
+          <div><b id="rsUnconf">0</b><span>same signature, no label</span></div>
+          <div class="bad"><b id="rsMissed">0</b><span>missed</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel act" aria-label="Recommended action">
+      <header class="ph-head"><span>◢ RECOMMENDED ACTION</span><span class="mono" id="actKind">--</span></header>
+      <p class="act-text" id="actText">Waiting for telemetry.</p>
+      <button class="ack act-btn" id="rerouteBtn" hidden><span id="rerouteLabel">APPLY RE-ROUTE</span></button>
+      <div class="alts" id="alts"></div>
+      <div class="order mono" id="order" hidden></div>
+    </section>
+
+    <!-- ============================================================ telemetry -->
+    <section class="panel telemetry">
+      <header class="ph-head"><span>◢ TELEMETRY // JOURNEY</span>
+        <span class="legend mono"><i class="lg t"></i>TEMP <i class="lg l"></i>LIFE <i class="lg s"></i>SAFE 2-8 °C</span>
+      </header>
+      <div class="chart-box"><canvas id="chart" role="img" aria-label="Temperature and medicine life over the shipment"></canvas></div>
+    </section>
+
+    <!-- ============================================================ ledger -->
+    <section class="panel ledger" id="receipt">
+      <header class="ph-head"><span>◢ SEAL LOG // SHA-256 CHAIN</span><span class="mono" id="chainStatus">NO DATA</span></header>
+      <ol class="log mono" id="feed"></ol>
+      <div class="log-empty mono" id="feedEmpty">&gt; awaiting first event_</div>
+      <footer class="log-foot mono"><span>SEALED <b id="chainCount">0</b></span><span>HEAD <b id="lastHash">--</b></span></footer>
+      <div class="breach" id="tamperStamp" aria-hidden="true">CHAIN BREACH</div>
+    </section>
+
+    <!-- ============================================================ arrhenius core -->
+    <section class="panel core">
+      <header class="ph-head"><span>◢ ARRHENIUS CORE</span><span class="mono">USP 1079.2</span></header>
+      <div class="eq">
+        <div class="eq-main">k(T) = e<sup>−(Ea/R)(1/T − 1/T₂₅)</sup></div>
+        <div class="eq-live mono" id="eqSub">--</div>
+      </div>
+      <div class="core-grid">
+        <div class="core-cell hot"><span class="cl">AGEING RATE</span><b id="kNow">--</b><span class="cn" id="kNote">vs 25 °C</span></div>
+        <div class="core-cell"><span class="cl">BUDGET USED</span><b id="usedH">--</b><span class="cn" id="usedNote">--</span></div>
+        <div class="core-cell"><span class="cl">FREEZE RULE</span><b id="freezeRule">--</b><span class="cn" id="freezeNote">--</span></div>
+      </div>
+      <div class="seg-bar" id="budgetBar" aria-hidden="true"></div>
+      <dl class="kv kv-row">
+        <div><dt>DEVICE</dt><dd class="mono" id="devLabel">--</dd></div>
+        <div><dt>PACKED</dt><dd class="mono" id="packedAt">--</dd></div>
+        <div><dt>READINGS</dt><dd class="mono" id="seq">--</dd></div>
+        <div><dt>SIGNAL</dt><dd class="mono" id="rssi">--</dd></div>
+      </dl>
+    </section>
+  </main>
+
+  <footer class="foot mono">
+    <span>LIPGLOSS &amp; LINUX // BIOBYTE 2K26 // TRK-01 COLD CHAIN GUARDIAN</span>
+    <span>ARRHENIUS KINETICS · MKT USP 1079.2 · WHO VVM CLASSES</span>
+  </footer>
+
+  <dialog id="settings">
+    <form method="dialog" class="settings">
+      <h2>◢ CONNECT DEVICE</h2>
+      <p>Type <b>browser</b> to run everything on this device, or use a Firebase / laptop server URL for a real device.</p>
+      <div class="field"><label for="dbUrl">DATABASE URL</label><input id="dbUrl" type="text" placeholder="browser  (or https://project-default-rtdb...firebasedatabase.app)"></div>
+      <div class="field"><label for="devId">DEVICE ID</label><input id="devId" placeholder="vg-001"></div>
+      <div class="field"><label for="dbAuth">DATABASE SECRET</label><input id="dbAuth" placeholder="optional"><small>Leave empty while the database is in test mode.</small></div>
+      <menu><button value="cancel" class="hud-btn">CANCEL</button><button id="saveSettings" value="save" class="hud-btn primary">CONNECT</button></menu>
+    </form>
+  </dialog>
+</body>
+</html>
