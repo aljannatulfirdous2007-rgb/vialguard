@@ -190,7 +190,7 @@ function buildChart() {
         },
       },
       scales: {
-        x: { grid: { color: grid }, border: { display: false }, ticks: { color: tick, maxTicksLimit: 9, maxRotation: 0, font: { family: "JetBrains Mono", size: 10 } } },
+        x: { grid: { color: grid }, border: { display: false }, ticks: { color: tick, maxTicksLimit: innerWidth < 600 ? 3 : 9, maxRotation: 0, font: { family: "JetBrains Mono", size: 10 } } },
         yT: { position: "left", suggestedMin: -5, suggestedMax: 40, grid: { color: grid }, border: { display: false },
               ticks: { color: tick, font: { family: "JetBrains Mono", size: 10 }, callback: (v) => `${v}°` } },
         yL: { position: "right", min: 0, max: 100, grid: { display: false }, border: { display: false },
@@ -519,6 +519,12 @@ const tickClock = () => { $("clock").textContent = new Date().toLocaleTimeString
 tickClock(); setInterval(tickClock, 1000);
 buildChart();
 if (!cfg.db) $("settings").showModal();
+// deep links from the landing page: ?start=heat | freeze | real | field
+(function autoStart() {
+  const st = new URLSearchParams(location.search).get("start");
+  const cmd = { heat: { env: "heat" }, freeze: { env: "freeze" }, real: { real: true }, field: { replay: true } }[st];
+  if (cmd) setTimeout(() => { sendCmd(cmd); document.querySelector(".control")?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 1500);
+})();
 if (cfg.db === "browser") document.body.classList.add("pocket");
 poll();
 setInterval(poll, POLL_MS);

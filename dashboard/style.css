@@ -466,6 +466,8 @@ dialog::backdrop { background: rgb(0 0 0 / .6); backdrop-filter: blur(3px); }
   .ctl { padding: 10px; }
   .ctl b { white-space: normal; font-size: 11px; line-height: 1.2; }
   .ctl span { display: none; }
+  .telemetry .ph-head { flex-wrap: wrap; }
+  .legend { flex-wrap: wrap; }
   #ctlHint, #integMode { display: none; }
   .route { flex-wrap: wrap; }
   .viab-num { font-size: 84px; }

@@ -3,11 +3,349 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>VialGuard</title>
-  <meta http-equiv="refresh" content="0; url=dashboard/">
-  <style>body{margin:0;min-height:100dvh;display:grid;place-items:center;background:#e9f0f3;color:#0a1c24;font:16px system-ui,sans-serif}a{color:#0087a8}</style>
+  <title>VialGuard: know if the medicine still works</title>
+  <meta name="description" content="VialGuard turns cold-chain temperature into a verdict: is this vaccine or insulin still usable? Predicts arrival life, catches tampering, recommends where to divert.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230087a8'/%3E%3Crect x='12.5' y='6' width='7' height='20' rx='2' fill='none' stroke='white' stroke-width='1.8'/%3E%3Crect x='13.6' y='15' width='4.8' height='10' fill='white'/%3E%3C/svg%3E">
+  <link rel="preload" href="dashboard/vendor/fonts/oxanium-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="dashboard/vendor/phosphor/style.css">
+  <link rel="stylesheet" href="dashboard/vendor/phosphor/fill.css">
+  <style>
+    @font-face { font-family: "Oxanium"; src: url("dashboard/vendor/fonts/oxanium-var.woff2") format("woff2"); font-weight: 200 800; font-display: swap; }
+    @font-face { font-family: "JetBrains Mono"; src: url("dashboard/vendor/fonts/jetbrains-mono-var.woff2") format("woff2"); font-weight: 100 800; font-display: swap; }
+    :root {
+      --bg: #eef3f5; --sheet: #ffffff; --sheet-2: #f4f8fa; --ink: #0a1c24; --ink-2: #3f5a64; --ink-3: #7f979f;
+      --line: #dbe6ea; --line-2: #c3d4da; --hud: #0087a8; --hud-soft: #e0f3f8; --ok: #00a35c; --warn: #c98200; --bad: #dc2440;
+      --cut: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+      --cut-s: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+    body {
+      margin: 0; color: var(--ink); font: 500 16px/1.55 "Oxanium", system-ui, sans-serif;
+      background:
+        radial-gradient(1000px 600px at 85% -10%, #d6eef5, transparent 70%),
+        linear-gradient(rgb(0 135 168 / .06) 1px, transparent 1px) 0 0 / 44px 44px,
+        linear-gradient(90deg, rgb(0 135 168 / .06) 1px, transparent 1px) 0 0 / 44px 44px,
+        var(--bg);
+    }
+    .mono { font-family: "JetBrains Mono", monospace; }
+    a { color: inherit; }
+    .wrap { max-width: 1240px; margin: 0 auto; padding: 0 28px; }
+    .ph, .ph-fill { line-height: 1; }
+
+    /* nav */
+    nav { position: sticky; top: 0; z-index: 10; background: rgb(238 243 245 / .85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+    nav .wrap { height: 68px; display: flex; align-items: center; gap: 28px; }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 800; letter-spacing: .26em; color: var(--hud); font-size: 17px; }
+    .logo i { display: grid; place-items: center; width: 32px; height: 32px; border: 1.5px solid var(--hud); border-radius: 50%; font-size: 15px; }
+    nav ul { display: flex; gap: 26px; margin: 0 0 0 auto; padding: 0; list-style: none; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+    nav ul a { text-decoration: none; } nav ul a:hover { color: var(--hud); }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 48px; padding: 0 22px; text-decoration: none; cursor: pointer;
+      font: 700 14px/1 "Oxanium", sans-serif; letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; border: 0;
+      background: var(--hud); color: #fff; clip-path: var(--cut-s); transition: transform .15s, filter .2s;
+    }
+    .btn:hover { filter: brightness(1.08); } .btn:active { transform: translateY(1px); }
+    .btn.ghost { background: transparent; color: var(--ink); outline: 1.5px solid var(--line-2); outline-offset: -1.5px; }
+    nav .btn { height: 40px; padding: 0 16px; font-size: 12px; }
+
+    /* hero */
+    .hero { padding: 64px 0 40px; display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); gap: 48px; align-items: center; }
+    .tag { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; letter-spacing: .16em; color: var(--hud); background: var(--hud-soft); clip-path: var(--cut-s); }
+    h1 { margin: 18px 0 18px; font-size: clamp(36px, 3.4vw, 50px); line-height: 1.04; font-weight: 800; letter-spacing: -.01em; }
+    h1 span { display: block; color: var(--hud); }
+    @media (min-width: 961px) { h1 span { white-space: nowrap; } }
+    .lede { margin: 0 0 30px; max-width: 46ch; font-size: 18px; color: var(--ink-2); }
+    .paths { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 560px; }
+    .path { display: flex; flex-direction: column; gap: 6px; padding: 18px 18px 16px; text-decoration: none; background: var(--sheet); border: 1px solid var(--line); clip-path: var(--cut); transition: transform .15s, border-color .2s; }
+    .path:hover { transform: translateY(-2px); border-color: var(--hud); }
+    .path small { font: 600 11px/1 "JetBrains Mono", monospace; letter-spacing: .14em; color: var(--ink-3); }
+    .path b { font-size: 17px; }
+    .path span { font-size: 14px; color: var(--ink-2); }
+    .path em { margin-top: 6px; font-style: normal; font-weight: 700; font-size: 13px; letter-spacing: .12em; color: var(--hud); }
+    .path.primary { background: var(--hud); border-color: var(--hud); color: #fff; }
+    .path.primary small, .path.primary span, .path.primary em { color: rgb(255 255 255 / .85); }
+    .shot { position: relative; }
+    .shot img { display: block; width: 100%; height: auto; border: 1px solid var(--line-2); clip-path: var(--cut); box-shadow: 0 40px 80px -40px rgb(0 70 90 / .45); }
+    .shot figcaption { margin-top: 10px; font: 500 12px/1.4 "JetBrains Mono", monospace; color: var(--ink-3); }
+
+    /* stats */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); background: var(--sheet); clip-path: var(--cut); margin: 30px 0 90px; }
+    .stat { padding: 24px 24px 20px; }
+    .stat + .stat { border-left: 1px solid var(--line); }
+    .stat b { display: block; font-size: 44px; font-weight: 800; line-height: 1; color: var(--hud); font-variant-numeric: tabular-nums; }
+    .stat span { display: block; margin-top: 8px; font-size: 14px; color: var(--ink-2); }
+    .stat cite { display: block; margin-top: 6px; font: 500 11px/1.3 "JetBrains Mono", monospace; font-style: normal; color: var(--ink-3); }
+
+    section { margin-bottom: 96px; }
+    h2 { margin: 0 0 12px; font-size: clamp(30px, 3.4vw, 44px); line-height: 1.05; font-weight: 800; }
+    .sub { margin: 0 0 36px; max-width: 60ch; color: var(--ink-2); font-size: 17px; }
+
+    /* problem: three columns of plain text, no cards */
+    .problem { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; }
+    .problem div { border-top: 2px solid var(--ink); padding-top: 18px; }
+    .problem .ph { font-size: 28px; color: var(--bad); }
+    .problem h3 { margin: 12px 0 8px; font-size: 21px; }
+    .problem p { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+    /* three things: alternating rows with real screenshots */
+    .things { display: grid; gap: 22px; }
+    .thing { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 36px; align-items: center; padding: 28px; background: var(--sheet); border: 1px solid var(--line); clip-path: var(--cut); }
+    .thing.flip { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+    .thing.flip .tx { order: 2; }
+    .thing .num { font: 700 12px/1 "JetBrains Mono", monospace; letter-spacing: .16em; color: var(--hud); }
+    .thing h3 { margin: 10px 0 10px; font-size: 28px; line-height: 1.1; }
+    .thing p { margin: 0 0 14px; color: var(--ink-2); }
+    .thing ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 15px; }
+    .thing li { display: flex; gap: 10px; align-items: flex-start; }
+    .thing li .ph-fill { color: var(--ok); margin-top: 3px; }
+    .thing img { width: 100%; height: auto; display: block; border: 1px solid var(--line); clip-path: var(--cut-s); }
+
+    /* no black box */
+    .science { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+    .eq { padding: 26px; background: var(--ink); color: #dff7ff; clip-path: var(--cut); }
+    .eq .big { font-size: clamp(26px, 3vw, 36px); font-weight: 700; white-space: nowrap; overflow-x: auto; }
+    .eq .big sup { font-size: .5em; color: #6fe3ff; }
+    .eq p { margin: 14px 0 0; font: 500 13px/1.6 "JetBrains Mono", monospace; color: #9cc3cf; }
+    .proof { display: grid; gap: 0; border: 1px solid var(--line); background: var(--sheet); clip-path: var(--cut); }
+    .proof div { display: grid; grid-template-columns: 34px 1fr; gap: 12px; padding: 16px 18px; }
+    .proof div + div { border-top: 1px solid var(--line); }
+    .proof .ph { font-size: 22px; color: var(--hud); }
+    .proof b { display: block; }
+    .proof span { font-size: 14px; color: var(--ink-2); }
+
+    /* plans */
+    .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .plan { display: flex; flex-direction: column; gap: 10px; padding: 26px; background: var(--sheet); border: 1px solid var(--line); clip-path: var(--cut); }
+    .plan.best { border: 2px solid var(--hud); }
+    .plan small { font: 600 11px/1 "JetBrains Mono", monospace; letter-spacing: .14em; color: var(--hud); }
+    .plan h3 { margin: 0; font-size: 22px; }
+    .price { font-size: 40px; font-weight: 800; line-height: 1; }
+    .price span { font-size: 15px; font-weight: 600; color: var(--ink-3); }
+    .plan ul { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 15px; color: var(--ink-2); }
+    .plan li { display: flex; gap: 8px; } .plan li .ph { color: var(--ok); margin-top: 4px; }
+    .note { margin-top: 14px; font: 500 12px/1.5 "JetBrains Mono", monospace; color: var(--ink-3); }
+
+    /* scan CTA */
+    .scan { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 40px; align-items: center; padding: 36px; background: var(--ink); color: #eaf9ff; clip-path: var(--cut); }
+    .scan img { width: 200px; height: auto; background: #fff; padding: 8px; }
+    .scan h2 { color: #fff; }
+    .scan p { margin: 0 0 22px; color: #9cc3cf; max-width: 52ch; }
+
+    footer { border-top: 1px solid var(--line); padding: 28px 0 40px; font-size: 13px; color: var(--ink-3); }
+    footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; }
+    footer a { color: var(--ink-2); }
+
+    .rise { animation: rise .8s cubic-bezier(.16, 1, .3, 1) both; }
+    .d1 { animation-delay: .08s; } .d2 { animation-delay: .16s; }
+    @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+    @media (prefers-reduced-motion: reduce) { .rise { animation: none; } html { scroll-behavior: auto; } }
+
+    @media (max-width: 960px) {
+      nav ul { display: none; } nav .btn { margin-left: auto; }
+      .hero, .science, .thing, .thing.flip { grid-template-columns: 1fr; }
+      .thing.flip .tx { order: 0; }
+      .stats { grid-template-columns: 1fr 1fr; }
+      .stat:nth-child(3) { border-left: 0; } .stat:nth-child(n+3) { border-top: 1px solid var(--line); }
+      .problem, .plans { grid-template-columns: 1fr; }
+      .scan { grid-template-columns: 1fr; justify-items: start; }
+    }
+    @media (max-width: 560px) {
+      .wrap { padding: 0 16px; }
+      .hero { padding-top: 36px; }
+      .paths { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr; }
+      .stat + .stat { border-left: 0; border-top: 1px solid var(--line); }
+      .thing { padding: 18px; }
+    }
+  </style>
 </head>
 <body>
-  <p>Opening VialGuard… <a href="dashboard/">continue</a></p>
+  <nav>
+    <div class="wrap">
+      <a class="logo" href="#"><i class="ph ph-drop"></i>VIALGUARD</a>
+      <ul>
+        <li><a href="#problem">Problem</a></li>
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#science">Science</a></li>
+        <li><a href="#plans">Plans</a></li>
+      </ul>
+      <a class="btn" href="dashboard/">Open console</a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <header class="hero">
+      <div class="rise">
+        <span class="tag"><i class="ph ph-snowflake"></i>COLD-CHAIN VIABILITY</span>
+        <h1>Know if it still works. <span>Before the patient does.</span></h1>
+        <p class="lede">Every cold-chain logger tells you the temperature. VialGuard tells you whether the vaccine or insulin inside is still usable, and what to do if it is not.</p>
+        <div class="paths">
+          <a class="path primary" href="dashboard/?start=heat">
+            <small>PATH A</small>
+            <b>I move vaccines or insulin</b>
+            <span>Run a live shipment. Stall the truck and watch VialGuard react.</span>
+            <em>Start shipment →</em>
+          </a>
+          <a class="path" href="dashboard/?start=real">
+            <small>PATH B</small>
+            <b>Just curious</b>
+            <span>Replay 24 hours of a real hospital fridge in 70 seconds.</span>
+            <em>Show me →</em>
+          </a>
+        </div>
+      </div>
+      <figure class="shot rise d1">
+        <img src="docs/img/predict_act.png" alt="VialGuard console recommending a diversion to PHC Sriperumbudur after a truck stall" width="1600" height="1000">
+        <figcaption>Live console: truck stalls at 45 °C, arrival life drops to 38%, VialGuard recommends a diversion and drafts a replacement order.</figcaption>
+      </figure>
+    </header>
+
+    <div class="stats rise d2">
+      <div class="stat"><b>14.8%</b><span>of vaccine storage time spent below 0 °C, missed by routine checks</span><cite>3-state India study, TDTMV 2020</cite></div>
+      <div class="stat"><b>2 in 3</b><span>vaccine vials showed freeze damage in a 10-state survey</span><cite>Murhekar et al., Bull. WHO 2013</cite></div>
+      <div class="stat"><b>7 / 9</b><span>real fridge door openings caught from temperature alone</span><cite>Our test on Zenodo hospital data</cite></div>
+      <div class="stat"><b>₹990</b><span>hardware per box, off-the-shelf parts</span><cite>ESP32 + DS18B20 bill of materials</cite></div>
+    </div>
+
+    <section id="problem">
+      <h2>The damage is invisible.</h2>
+      <p class="sub">A vial that froze last night looks exactly like a good one. So pharmacists guess: throw away good stock, or give a dead dose.</p>
+      <div class="problem">
+        <div>
+          <i class="ph ph-eye-slash"></i>
+          <h3>Loggers record, nobody decides</h3>
+          <p>A graph that says "max 38 °C" is not an answer. Is this insulin still usable? Today nobody on the route can say.</p>
+        </div>
+        <div>
+          <i class="ph ph-notebook"></i>
+          <h3>Logbooks miss the night</h3>
+          <p>Manual checks happen at 9 AM and 4 PM. A fridge that over-cools at 1 AM reads a normal 4 °C by morning.</p>
+        </div>
+        <div>
+          <i class="ph ph-fingerprint"></i>
+          <h3>No one owns the break</h3>
+          <p>When the cold chain breaks, there is no record of who opened the box or switched off the cooling, and records can be edited later.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="how">
+      <h2>Three things. Done right.</h2>
+      <p class="sub">VialGuard watches the probe inside the box and turns every reading into a decision.</p>
+      <div class="things">
+        <div class="thing">
+          <div class="tx">
+            <span class="num">01 PREDICT</span>
+            <h3>Medicine life, not degrees</h3>
+            <p>An Arrhenius model, the kinetics used in pharma stability studies, turns heat exposure into remaining life for each drug. Live outdoor weather predicts life on arrival.</p>
+            <ul>
+              <li><i class="ph-fill ph-check-circle"></i>"Insulin: 64% left, usable for 11 h"</li>
+              <li><i class="ph-fill ph-check-circle"></i>Freezing is instant DISCARD, heat drains gradually</li>
+              <li><i class="ph-fill ph-check-circle"></i>Different limits for insulin, VVM7 and VVM2 vaccines</li>
+            </ul>
+          </div>
+          <img src="docs/img/dash_alert_hero.png" alt="VialGuard console showing 80 percent medicine life during a truck stall with alerts escalated" width="1600" height="712" loading="lazy">
+        </div>
+        <div class="thing flip">
+          <div class="tx">
+            <span class="num">02 DETECT</span>
+            <h3>Catch tampering, even with a dead sensor</h3>
+            <p>Opening a cold box leaves a temperature signature. VialGuard spots it without a lid sensor, flags cooling shutdowns, and seals every reading in a SHA-256 chain.</p>
+            <ul>
+              <li><i class="ph-fill ph-check-circle"></i>Tested on real hospital fridge data: 7 of 9 openings caught</li>
+              <li><i class="ph-fill ph-check-circle"></i>Custody score per courier</li>
+              <li><i class="ph-fill ph-check-circle"></i>Edit one past reading and the log shows a breach</li>
+            </ul>
+          </div>
+          <img src="docs/img/real_data_test.png" alt="Real hospital fridge replay with detector score and door markers" width="1600" height="1000" loading="lazy">
+        </div>
+        <div class="thing">
+          <div class="tx">
+            <span class="num">03 ACT</span>
+            <h3>Tell people what to do next</h3>
+            <p>If the shipment will not arrive usable, VialGuard picks the nearest hospital it can still reach with life left, drafts a replacement order, and escalates alerts from courier to pharmacist to QA head.</p>
+            <ul>
+              <li><i class="ph-fill ph-check-circle"></i>One-tap diversion</li>
+              <li><i class="ph-fill ph-check-circle"></i>Alert ladder until someone acknowledges</li>
+              <li><i class="ph-fill ph-check-circle"></i>Works offline, syncs sealed records later</li>
+            </ul>
+          </div>
+          <img src="docs/img/dash_discard_hero.png" alt="Red alert mode after a freeze event with FROZEN stamp" width="1600" height="712" loading="lazy">
+        </div>
+      </div>
+    </section>
+
+    <section id="science" class="science">
+      <div>
+        <h2>Every verdict. One equation. No black box.</h2>
+        <p class="sub">No training data to trust blindly. Each number on screen can be recalculated by hand, and every source is cited.</p>
+        <div class="eq">
+          <div class="big">k(T) = e<sup>−(Ea/R)(1/T − 1/T₂₅)</sup></div>
+          <p>Each reading drains the stability budget at rate k(T).<br>VVM7 check: 7 days at 37 °C = 45 days at 25 °C (WHO definition).<br>Mean Kinetic Temperature per USP 1079.2.</p>
+        </div>
+      </div>
+      <div class="proof">
+        <div><i class="ph ph-flask"></i><p><b>23 automated tests</b><span>Model, detector, forecast and routing, plus a parity test so the phone version matches the Python reference.</span></p></div>
+        <div><i class="ph ph-database"></i><p><b>Real data, real weather</b><span>Detector calibrated on a public hospital cold-chain dataset (Zenodo, CC BY 4.0). Route forecast uses live Open-Meteo weather.</span></p></div>
+        <div><i class="ph ph-cpu"></i><p><b>Runs on a ₹400 chip</b><span>The same model compiles for the ESP32, so the verdict works offline inside the box.</span></p></div>
+        <div><i class="ph ph-github-logo"></i><p><b>Open source</b><span>Every line is public on <a href="https://github.com/aljannatulfirdous2007-rgb/vialguard">GitHub</a>.</span></p></div>
+      </div>
+    </section>
+
+    <section id="plans">
+      <h2>Built for the last mile.</h2>
+      <p class="sub">Enterprise trackers are priced for big pharma. VialGuard is priced for a district store and its PHCs.</p>
+      <div class="plans">
+        <div class="plan">
+          <small>PILOT</small>
+          <h3>Try it</h3>
+          <div class="price">₹0</div>
+          <ul>
+            <li><i class="ph ph-check"></i>Full console in the browser</li>
+            <li><i class="ph ph-check"></i>Simulated and replayed shipments</li>
+            <li><i class="ph ph-check"></i>Open-source firmware</li>
+          </ul>
+        </div>
+        <div class="plan best">
+          <small>PHC KIT</small>
+          <h3>One smart box</h3>
+          <div class="price">₹990 <span>one time</span></div>
+          <ul>
+            <li><i class="ph ph-check"></i>ESP32 + probe + display hardware</li>
+            <li><i class="ph ph-check"></i>Viability verdict on the box, offline</li>
+            <li><i class="ph ph-check"></i>Telegram alerts to your staff</li>
+          </ul>
+        </div>
+        <div class="plan">
+          <small>DISTRICT</small>
+          <h3>Whole network</h3>
+          <div class="price">₹49 <span>per box / month</span></div>
+          <ul>
+            <li><i class="ph ph-check"></i>Arrival forecast and re-routing</li>
+            <li><i class="ph ph-check"></i>Custody scores and audit trail</li>
+            <li><i class="ph ph-check"></i>Auto-drafted replacement orders</li>
+          </ul>
+        </div>
+      </div>
+      <p class="note">Proposed pricing for a pilot. Hardware cost is the actual bill of materials.</p>
+    </section>
+
+    <section class="scan">
+      <img src="docs/img/qr_vialguard.png" alt="QR code linking to the VialGuard console" width="720" height="870">
+      <div>
+        <h2>Run it on your phone. Right now.</h2>
+        <p>Every visitor gets their own private shipment. Stall the truck, freeze the vials, try to fake a record. Nothing to install.</p>
+        <a class="btn" href="dashboard/?start=heat">Start a shipment</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>VialGuard by Lipgloss &amp; Linux (Al Jannatul Firdous A, Aayesha Siddiqah A). BioByte 2K26, Cold Chain Guardian.</span>
+      <span><a href="https://github.com/aljannatulfirdous2007-rgb/vialguard">Source</a> · <a href="data/README.md">Data sources</a></span>
+    </div>
+  </footer>
 </body>
 </html>
