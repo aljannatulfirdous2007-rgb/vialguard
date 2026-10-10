@@ -1,0 +1,83 @@
+{
+  "dataset": "zenodo.22101912",
+  "horizon_min": 10,
+  "train_rows": 8316,
+  "test_rows": 2773,
+  "split": "time-based, last 25% of each fridge held out",
+  "features": [
+    "t_lag0",
+    "t_lag1",
+    "t_lag2",
+    "t_lag3",
+    "t_lag5",
+    "t_lag10",
+    "d1",
+    "d3",
+    "d10",
+    "roll_mean10",
+    "roll_std10",
+    "roll_max10",
+    "hum",
+    "hum_d3",
+    "room",
+    "door_recent",
+    "tod_sin",
+    "tod_cos"
+  ],
+  "models": {
+    "persistence": {
+      "mae": 0.326,
+      "p90_error": 0.5,
+      "excursions": 0,
+      "excursions_caught": 0,
+      "false_alarms": 0
+    },
+    "trend_line": {
+      "mae": 1.883,
+      "p90_error": 3.2,
+      "excursions": 0,
+      "excursions_caught": 0,
+      "false_alarms": 261
+    },
+    "ridge": {
+      "mae": 0.161,
+      "p90_error": 0.311,
+      "excursions": 0,
+      "excursions_caught": 0,
+      "false_alarms": 0
+    },
+    "xgboost": {
+      "mae": 0.144,
+      "p90_error": 0.27,
+      "excursions": 0,
+      "excursions_caught": 0,
+      "false_alarms": 0
+    }
+  },
+  "xgboost_top_features": [
+    [
+      "t_lag1",
+      0.41
+    ],
+    [
+      "t_lag0",
+      0.078
+    ],
+    [
+      "d1",
+      0.074
+    ],
+    [
+      "d3",
+      0.067
+    ],
+    [
+      "t_lag5",
+      0.055
+    ],
+    [
+      "t_lag2",
+      0.043
+    ]
+  ]
+}

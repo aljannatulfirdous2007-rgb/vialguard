@@ -41,9 +41,13 @@ Press **A** (or the red button) to acknowledge alerts. No internet, Firebase or 
 | **Arrival forecast** | Predicts medicine life on arrival: probe trend + **live outdoor temperature** for the route, Newton cooling of the box | **Open-Meteo** live forecast (cached offline) | Box time constant (4 h) is a stated assumption |
 | **Custody integrity** | Detects box openings and cooling failure from the temperature signature alone, custody score | Calibrated on **real hospital fridge data**, [Zenodo 10.5281/zenodo.22101912](https://doi.org/10.5281/zenodo.22101912) (CC BY 4.0) | Catches **7 of 9** labelled door openings in the replay window (10 of 17 over all 4 days); extra detections have the same physical signature but no label |
 | **Recommended action** | If it will not arrive usable: divert to the closest hospital it can still reach with life left, auto-draft a replacement order | Route + facility list | Facility coordinates are illustrative demo data |
+| **XGBoost forecaster** | 10-min-ahead fridge temperature, early warning above 8 °C | Trained on 8,316 real readings, tested on 2,773 unseen | MAE 0.14 °C vs 0.33 °C for "no change"; 0 false alarms; test period had no real excursion |
+| **Ask VialGuard** | Tool-calling assistant with visible trace | Live engine state | Rule-based router, cannot invent answers |
 | **Field trace replay** | 72 h last-mile journey: power cut, road heat, overnight PHC freeze missed by the manual logbook | Reconstructed from published Indian cold-chain findings | Not raw data; labelled as reconstructed |
 
-Reproduce the detector numbers: `python model/calibrate_behavior.py`
+Reproduce the detector numbers: `python model/calibrate_behavior.py`  
+Reproduce the ML benchmark: `python model/ml_forecast.py` (needs xgboost, m2cgen)  
+Architecture and production design (MQTT, Kafka, InfluxDB): [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## Quick start without hardware (5 minutes)
 

@@ -191,6 +191,21 @@
     return out;
   }
 
+  // ------------------------------------------------------------------ XGBoost forecaster (model/ml_forecast.py, exported by m2cgen)
+  // Features are built exactly like the training code: 1-minute history, lags, diffs, 10-minute rolling stats.
+  function mlForecast(hist) {
+    const xgb = root.vgXgbDelta || (typeof module !== "undefined" ? (() => { try { return require("./ml_model.js").vgXgbDelta; } catch { return null; } })() : null);
+    if (!xgb || hist.length < 11) return null;
+    const n = hist.length, T = (l) => hist[n - 1 - l].t, last10 = hist.slice(-10).map((h) => h.t);
+    const mean = last10.reduce((a, b) => a + b, 0) / 10;
+    const std = Math.sqrt(last10.reduce((a, b) => a + (b - mean) ** 2, 0) / 9);
+    const d = new Date(hist[n - 1].ts * 1000), mins = d.getUTCHours() * 60 + d.getUTCMinutes();
+    const x = [T(0), T(1), T(2), T(3), T(5), T(10), T(0) - T(1), T(0) - T(3), T(0) - T(10), mean, std, Math.max(...last10),
+      hist[n - 1].hum, hist[n - 1].hum - hist[n - 4].hum, hist[n - 1].room, Math.max(...hist.slice(-3).map((h) => h.door)),
+      Math.sin((2 * Math.PI * mins) / 1440), Math.cos((2 * Math.PI * mins) / 1440)];
+    return { temp: +(T(0) + xgb(x)).toFixed(2), horizon: 10, model: "XGBoost, trained on real fridge data" };
+  }
+
   // ------------------------------------------------------------------ the virtual device
   const ENV = { cold: 5, room: 30, heat: 45, freeze: -6 };
   const SCALE = 360, ESC = [15, 30];
@@ -212,7 +227,7 @@
       this.excursion = this.w50 = this.w20 = this.discardSent = false;
       this.alertActive = false; this.acked = false; this.level = -1; this.severity = 0; this.reason = ""; this.levelSince = 0;
       this.replay = null; this.paused = false; this.det = new Detector(); this.modelMin = 0; this.lastFlags = [];
-      this.prewarn = null; this.breach = null;
+      this.prewarn = null; this.breach = null; this.ml = null; this.mlHist = [];
       this.trip = { dest: DEFAULT_DEST, done: 0, total: etaH(ORIGIN, fac(DEFAULT_DEST)), start: { ...ORIGIN }, delivered: false, rerouted: false };
       this.realscore = null;
     }
@@ -279,7 +294,11 @@
     startReal() {
       if (!this.realWindow) return;
       this.newShipment(this.drug, "REAL_DATA_START");
-      const pts = this.realWindow.map(([ts, t, o]) => ({ ts, t, open: !!o }));
+      const raw = Array.isArray(this.realWindow) ? { warm: 0, rows: this.realWindow } : this.realWindow;
+      const all = raw.rows.map(([ts, t, o, hum, room]) => ({ ts, t, open: !!o, hum: hum ?? 55, room: room ?? 22, door: o ? 1 : 0 }));
+      const pts = all.slice(raw.warm);
+      this.mlHist = all.slice(0, raw.warm);
+      this.ml = null;
       this.replay = { kind: "real", pts, i: 0, start: pts[0].ts };
       this.realscore = { labels: [], hits: [], matched: 0, unconfirmed: 0, missed: 0 };
       this.envMode = "real"; this.lid = false;
@@ -290,6 +309,12 @@
         if (r.i >= r.pts.length) { this.events.push("REPLAY_END"); this.seal(this.temp, r.pts[r.pts.length - 1].ts + 60); this.replay = null; this.paused = true; return; }
         const pt = r.pts[r.i++], minute = (pt.ts - r.start) / 60;
         if (pt.open) { sc.labels.push(minute); this.events.push("DOOR_LABEL"); }
+        this.mlHist.push(pt); if (this.mlHist.length > 30) this.mlHist.shift();
+        this.ml = mlForecast(this.mlHist);
+        if (this.ml && this.ml.temp > 8 && pt.t <= 8 && this.prewarn !== "heat") {
+          this.prewarn = "heat"; this.events.push("PREDICT_HEAT_ML");
+          this.raise(1, `XGBoost forecast: ${this.ml.temp} C in 10 min (above 8 C). Check the fridge door and cooling.`);
+        } else if (this.ml && this.ml.temp <= 7.5) this.prewarn = null;
         this.temp = pt.t;
         const flags = this.evaluate(pt.t, 1 / 60, pt.ts, r.i % 5 === 0 || pt.open, minute);
         if (flags.some((f) => f.startsWith("ACCESS"))) sc.hits.push(minute);
@@ -312,7 +337,8 @@
         if (f === "ACCESS_SUSPECTED") this.raise(1, "Box opened without a logged reason (temperature signature)");
         else if (f === "COOLING_FAILURE") this.raise(2, "Cooling failure suspected: steady climb with no recovery");
       }
-      this.breach = this.det.predictBreach();
+      // trend-line rule is for the transit box; on real fridge data it false-alarms, so the XGBoost model is used there
+      this.breach = this.replay && this.replay.kind === "real" ? null : this.det.predictBreach();
       if (this.breach && this.prewarn !== this.breach.kind) {
         this.prewarn = this.breach.kind;
         const m = Math.round(this.breach.minutes);
@@ -371,6 +397,7 @@
         behavior: { trust: this.det.trust(), access: this.det.access, unexplained: this.det.unexplained, cooling: this.det.cooling, recent: this.lastFlags },
         realscore: rs ? { labels: rs.labels.length, hits: rs.hits.length, matched: rs.matched, unconfirmed: rs.unconfirmed, missed: rs.missed } : null,
         breach: this.breach,
+        ml: this.replay && this.replay.kind === "real" ? this.ml : null,
         cause: rootCause(this.temp, this.lid, !["heat", "room"].includes(this.envMode), this.lastFlags, this.tr.frozen, this.excursion),
         weather: { source: this.weatherSrc, outdoor_c: this.weather ? +this.outdoor().toFixed(1) : null },
       };

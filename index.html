@@ -279,16 +279,19 @@
     <section id="science" class="science">
       <div>
         <h2>Every verdict. One equation. No black box.</h2>
-        <p class="sub">No training data to trust blindly. Each number on screen can be recalculated by hand, and every source is cited.</p>
+        <p class="sub">Physics for the verdict, machine learning only where real data proves it helps. Every number can be checked, and every source is cited.</p>
         <div class="eq">
           <div class="big">k(T) = e<sup>−(Ea/R)(1/T − 1/T₂₅)</sup></div>
           <p>Each reading drains the stability budget at rate k(T).<br>VVM7 check: 7 days at 37 °C = 45 days at 25 °C (WHO definition).<br>Mean Kinetic Temperature per USP 1079.2.</p>
         </div>
       </div>
       <div class="proof">
-        <div><i class="ph ph-flask"></i><p><b>23 automated tests</b><span>Model, detector, forecast and routing, plus a parity test so the phone version matches the Python reference.</span></p></div>
+        <div><i class="ph ph-chart-line-up"></i><p><b>XGBoost, tested honestly</b><span>Trained on 8,316 real fridge readings. On 2,773 unseen ones: 0.14 °C error, 56% better than assuming no change, zero false alarms. Our own simpler rule failed this test, so we say so.</span></p></div>
+        <div><i class="ph ph-chats-circle"></i><p><b>Ask VialGuard</b><span>"Is the shipment on track?" answered by calling six tools on live data, with every call shown. It cannot invent an answer.</span></p></div>
+        <div><i class="ph ph-flask"></i><p><b>Automated tests</b><span>Model, detector, forecast, routing, assistant, and parity tests so the phone version and the exported XGBoost trees match the Python reference.</span></p></div>
         <div><i class="ph ph-database"></i><p><b>Real data, real weather</b><span>Detector calibrated on a public hospital cold-chain dataset (Zenodo, CC BY 4.0). Route forecast uses live Open-Meteo weather.</span></p></div>
         <div><i class="ph ph-cpu"></i><p><b>Runs on a ₹400 chip</b><span>The same model compiles for the ESP32, so the verdict works offline inside the box.</span></p></div>
+        <div><i class="ph ph-tree-structure"></i><p><b>Built to scale</b><span>Production design: MQTT, Kafka and InfluxDB in front of the same engine. See <a href="docs/ARCHITECTURE.md">architecture</a>.</span></p></div>
         <div><i class="ph ph-github-logo"></i><p><b>Open source</b><span>Every line is public on <a href="https://github.com/aljannatulfirdous2007-rgb/vialguard">GitHub</a>.</span></p></div>
       </div>
     </section>

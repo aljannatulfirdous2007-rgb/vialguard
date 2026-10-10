@@ -11,15 +11,17 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="vendor/phosphor/style.css">
   <link rel="stylesheet" href="vendor/phosphor/fill.css">
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=9">
   <script>
     try { document.documentElement.dataset.theme = localStorage.getItem("vg-hud-theme") === "dark" ? "dark" : "light"; } catch (e) { document.documentElement.dataset.theme = "light"; }
   </script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" defer></script>
   <script src="vendor/chart.umd.min.js" defer></script>
-  <script src="chain.js?v=6" defer></script>
-  <script src="engine.js?v=6" defer></script>
-  <script src="app.js?v=6" defer></script>
+  <script src="chain.js?v=9" defer></script>
+  <script src="ml_model.js?v=9" defer></script>
+  <script src="engine.js?v=9" defer></script>
+  <script src="agent.js?v=9" defer></script>
+  <script src="app.js?v=9" defer></script>
 </head>
 <body data-verdict="idle">
   <div class="fx-grid" aria-hidden="true"></div>
@@ -189,7 +191,7 @@
       <div class="route-bar"><div id="rtBar"></div><i id="rtDot" class="ph-fill ph-truck"></i></div>
       <div class="route-meta mono"><span id="rtEta">ETA --</span><span id="rtKm">--</span></div>
       <div class="breach-warn" id="breachWarn" hidden><i class="ph-fill ph-warning-diamond"></i><div><b id="breachTitle">--</b><span id="breachSub">--</span></div></div>
-      <div class="fc-big"><b id="fcLife">--</b><small>%</small><span>predicted medicine life<br>on arrival</span></div>
+      <div class="fc-big"><b id="fcLife">--</b><small id="fcUnit">%</small><span id="fcLabel">predicted medicine life<br>on arrival</span></div>
       <p class="fc-note" id="fcNote">Physics forecast: probe trend + live outdoor temperature on the route.</p>
     </section>
 
@@ -220,6 +222,22 @@
       <button class="ack act-btn" id="rerouteBtn" hidden><span id="rerouteLabel">APPLY RE-ROUTE</span></button>
       <div class="alts" id="alts"></div>
       <div class="order mono" id="order" hidden></div>
+    </section>
+
+    <!-- ============================================================ ask vialguard -->
+    <section class="panel ask" aria-label="Ask VialGuard">
+      <header class="ph-head"><span>◢ ASK VIALGUARD // TOOL-CALLING ASSISTANT</span><span class="mono">ANSWERS ONLY FROM TOOL RESULTS</span></header>
+      <div class="ask-grid">
+        <div class="ask-chat">
+          <div class="chips" id="chips">
+            <button>Is the shipment on track?</button><button>Can I still use it?</button><button>Why is it at risk?</button>
+            <button>Where should we divert?</button><button>Was the box tampered with?</button><button>What are the storage rules?</button>
+          </div>
+          <div class="msgs" id="msgs"><div class="msg bot">Ask about this shipment. I check the live data before I answer.</div></div>
+          <form id="askForm" class="ask-form"><input id="askInput" autocomplete="off" placeholder="Is shipment on track?"><button class="hud-btn primary" type="submit">ASK</button></form>
+        </div>
+        <ol class="trace mono" id="trace"><li class="empty">Tool calls appear here: question, tools called with their arguments, raw results, answer.</li></ol>
+      </div>
     </section>
 
     <!-- ============================================================ route map -->

@@ -3,7 +3,7 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "test": "node tests/chain.test.js && python -m unittest discover -s model -v",
+    "test": "node tests/chain.test.js && node tests/engine.test.js && node tests/agent.test.js && python -m unittest discover -s model",
     "local": "python simulator/simulate.py --local"
   }
 }

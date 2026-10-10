@@ -120,7 +120,7 @@ const EVENTS = {
   REPLAY_START: ["FIELD TRACE REPLAY", ""], REPLAY_END: ["REPLAY COMPLETE", ""],
   ACCESS_SUSPECTED: ["UNLOGGED OPENING SUSPECTED", "bad"], ACCESS_LOGGED: ["OPENING (LOGGED)", ""],
   COOLING_FAILURE: ["COOLING FAILURE SIGNATURE", "bad"], REROUTED: ["RE-ROUTED", "good"], DELIVERED: ["DELIVERED", "good"],
-  REAL_DATA_START: ["REAL FRIDGE DATA (ZENODO)", ""], PREDICT_FREEZE: ["FREEZE PREDICTED (EARLY WARNING)", "cold"], PREDICT_HEAT: ["BREACH PREDICTED (EARLY WARNING)", "warn"], DOOR_LABEL: ["REAL DOOR OPENED (LABEL)", "cold"],
+  REAL_DATA_START: ["REAL FRIDGE DATA (ZENODO)", ""], PREDICT_FREEZE: ["FREEZE PREDICTED (EARLY WARNING)", "cold"], PREDICT_HEAT: ["BREACH PREDICTED (EARLY WARNING)", "warn"], PREDICT_HEAT_ML: ["XGBOOST: BREACH PREDICTED", "warn"], DOOR_LABEL: ["REAL DOOR OPENED (LABEL)", "cold"],
   PH_STORE: ["AT DISTRICT STORE", ""], PH_POWERCUT: ["POWER CUT AT STORE", "warn"], PH_TRANSIT: ["ON THE ROAD", ""],
   PH_DELAY: ["STUCK IN HEAT", "warn"], PH_PHC: ["IN PHC FRIDGE", ""], PH_NIGHTFREEZE: ["FRIDGE OVER-COOLING", "cold"],
 };
@@ -282,6 +282,7 @@ function renderState(s) {
   renderControls(s);
   renderPredict(s);
   renderWarnings(s);
+  agentState = s;
   initMap();
   renderMap(s);
 }
@@ -348,6 +349,7 @@ function renderReadings(records, ship) {
   lines.forEach((l) => seen.add(l.key));
 
   lastRecords = records;
+  agentRecords = records;
   if (!records.length) return;
   const v = VGChain.verifyChain(records);
   $("receipt").className = `panel ledger ${v.ok ? "ok" : "bad"}`;
@@ -407,6 +409,7 @@ function renderPredict(s) {
   $("leftOutSub").textContent = wx.outdoor_c != null ? `${wx.outdoor_c} °C outdoors now (live)` : "outdoor temperature";
   const real = s.replay_kind === "real" || (s.realscore && !s.replay_kind && s.replay_done);
   if (tr && fc && !s.replay_kind && !s.replay_done) {
+    $("fcUnit").textContent = "%"; $("fcLabel").innerHTML = "predicted medicine life<br>on arrival";
     const k = tr.total_h ? Math.min(1, tr.done_h / tr.total_h) : 1;
     $("rtFrom").textContent = tr.rerouted ? "DIVERTED" : tr.origin.toUpperCase();
     $("rtTo").textContent = tr.dest.toUpperCase();
@@ -435,8 +438,16 @@ function renderPredict(s) {
     if (a.order) ord.textContent = `AUTO-DRAFTED REPLACEMENT ORDER\nTo: ${tr.dest}\nItem: ${s.drug_name} x 1 shipment\nReason: ${a.kind === "discard" ? "frozen in transit" : `predicted arrival life ${Math.round(fc.dest.life_at_arrival)}% (below 50%)`}, shipment ${s.ship.toUpperCase()}\nStatus: awaiting pharmacist approval`;
   } else {
     $("rtFrom").textContent = s.realscore ? "HOSPITAL FRIDGE" : "FIELD TRACE"; $("rtTo").textContent = s.replay_done ? "REPLAY DONE" : "REPLAY";
-    $("rtBar").style.width = "0"; $("rtEta").textContent = "--"; $("rtKm").textContent = "--"; $("fcLife").textContent = "--";
-    $("fcNote").textContent = "Arrival forecast applies to live shipments.";
+    $("rtBar").style.width = "0"; $("rtEta").textContent = "--"; $("rtKm").textContent = "--";
+    if (s.ml) {
+      $("fcLife").textContent = s.ml.temp.toFixed(1); $("fcUnit").textContent = "°C";
+      $("fcLabel").innerHTML = "XGBoost forecast<br>10 min ahead";
+      document.querySelector(".fc").style.setProperty("--fcv", s.ml.temp > 8 ? css("--bad") : css("--ok"));
+      $("fcNote").textContent = "Trained on 8,316 real fridge readings. On 2,773 unseen ones: 0.14 °C average error, 56% better than assuming no change, zero false alarms.";
+    } else {
+      $("fcLife").textContent = "--";
+      $("fcNote").textContent = "Arrival forecast applies to live shipments.";
+    }
     document.querySelector(".act").className = "panel act";
     $("actKind").textContent = "REPLAY"; $("actText").textContent = s.replay_done ? "Replay finished. Press a SIMULATION CONTROL button or NEW SHIPMENT to start a live shipment." : "Replaying recorded data. Watch the custody panel and the seal log.";
     $("rerouteBtn").hidden = true; $("alts").innerHTML = ""; $("order").hidden = true;
@@ -477,6 +488,7 @@ function initMap() {
 }
 function renderMap(s) {
   if (!map || !s.trip || !s.trip.pos) return;
+  if (!map._vgFitted) { map.invalidateSize(); map.fitBounds(FAC.map((f) => [f[2], f[3]]), { padding: [30, 30] }); map._vgFitted = true; }
   const pos = [s.trip.pos.lat, s.trip.pos.lon];
   const dest = FAC.find((f) => f[0] === s.trip.dest_id);
   mapLayers.clearLayers();
@@ -499,6 +511,27 @@ function renderWarnings(s) {
   $("cause").hidden = !c.code;
   if (c.code) $("causeText").textContent = c.text;
 }
+
+
+// ---------------------------------------------------------------- Ask VialGuard
+let agentState = null, agentRecords = [];
+function askAgent(q) {
+  q = q.trim();
+  if (!q || !agentState) return;
+  const out = VGAgent.ask(q, { state: agentState, records: agentRecords });
+  const add = (cls, text) => { const d = document.createElement("div"); d.className = `msg ${cls}`; d.textContent = text; $("msgs").appendChild(d); };
+  add("user", q);
+  add("bot", out.answer);
+  $("msgs").scrollTop = $("msgs").scrollHeight;
+  const esc = (x) => String(x).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  const items = [`<li><span class="who">OPERATOR</span><pre>"${esc(q)}"</pre></li>`,
+    `<li><span class="who">AGENT</span><pre>intent: ${out.intent || "unknown"}</pre></li>`];
+  out.steps.forEach((s) => items.push(`<li><span class="who">TOOL ${esc(s.tool)}(${esc(JSON.stringify(s.args))})</span><pre>${esc(JSON.stringify(s.result, null, 1))}</pre></li>`));
+  items.push(`<li><span class="who">ANSWER</span><pre>${esc(out.answer)}</pre></li>`);
+  $("trace").innerHTML = items.join("");
+}
+$("chips").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) askAgent(b.textContent); });
+$("askForm").addEventListener("submit", (e) => { e.preventDefault(); askAgent($("askInput").value); $("askInput").value = ""; });
 
 $("rerouteBtn").addEventListener("click", () => { const id = $("rerouteBtn").dataset.id; if (id) sendCmd({ reroute: id }); });
 $("realBtn").addEventListener("click", () => sendCmd({ real: true }));

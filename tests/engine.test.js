@@ -63,3 +63,16 @@ d4.command({ env: "cold" });
 for (let i = 0; i < 30; i++) d4.step(1);
 assert.strictEqual(d4.tr.frozen, false, "acting on the warning saves the vials");
 console.log("engine.js: early-warning tests passed");
+
+// 8. XGBoost export: the JavaScript trees give the same answers as the trained Python model
+const { vgXgbDelta } = require("../dashboard/ml_model.js");
+const par = JSON.parse(fs.readFileSync(path.join(__dirname, "ml_parity.json"), "utf8"));
+par.X.forEach((x, i) => assert.ok(Math.abs(vgXgbDelta(x) - par.y[i]) < 1e-3, `ml parity row ${i}: ${vgXgbDelta(x)} vs ${par.y[i]}`));
+// and the replay uses it
+globalThis.vgXgbDelta = vgXgbDelta;
+const d5 = new E.Device(win);
+d5.startReal();
+let mlSeen = null;
+while (d5.replay) { d5.step(1); if (d5.ml) mlSeen = d5.ml; }
+assert.ok(mlSeen && mlSeen.horizon === 10, "ML forecast produced during real replay");
+console.log("engine.js: XGBoost parity tests passed");
