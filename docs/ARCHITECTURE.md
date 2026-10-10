@@ -69,7 +69,10 @@ uses XGBoost.
 
 ## Ask VialGuard
 
-Rule-based intent router plus six tools (`query_telemetry`, `search_compliance_sop`, `forecast_arrival`,
-`find_alternatives`, `diagnose_cause`, `audit_log`). Answers are built only from tool results, and every tool call
-is shown. No language model is involved, so it runs offline and cannot invent a medical answer. A language model
-could be added as the router later without changing the tools.
+Two versions of the same agent pattern (question → plan → tools → answer):
+
+- **Browser** (`dashboard/agent.js`): rule-based router plus six tools on the live dashboard state. No server, works offline.
+- **LangGraph** (`agent/`): graph `plan → tools → answer → check → (end | fallback)` over InfluxDB.
+  A local LLM (Ollama, no API key) writes the answer; the `check` node rejects any number not found in a tool result.
+  Measured on 8 held-out questions, the keyword router chose the right tools 7/8 times, the 1.5B LLM 2/8,
+  so the router plans and the LLM only phrases. Details: [agent/README.md](../agent/README.md).

@@ -44,6 +44,7 @@ Press **A** (or the red button) to acknowledge alerts. No internet, Firebase or 
 | **XGBoost forecaster** | 10-min-ahead fridge temperature, early warning above 8 °C | Trained on 8,316 real readings, tested on 2,773 unseen | MAE 0.14 °C vs 0.33 °C for "no change"; 0 false alarms; test period had no real excursion |
 | **LSTM (PyTorch)** | Same forecast task as a sequence model | Same unseen test rows | MAE 0.15 °C, 0 false alarms; XGBoost still slightly better |
 | **Kafka → InfluxDB pipeline** | Streams readings, verifies hash chains, stores forecasts | All 16,311 real readings | 0 chain breaks; see [pipeline/README.md](pipeline/README.md) |
+| **LangGraph agent** | plan → tools → answer → grounding check over InfluxDB, local LLM via Ollama | 8 held-out questions | Router picks right tools 7/8 vs 1.5B LLM 2/8; guardrail caught invented numbers. See [agent/README.md](agent/README.md) |
 | **Ask VialGuard** | Tool-calling assistant with visible trace | Live engine state | Rule-based router, cannot invent answers |
 | **Field trace replay** | 72 h last-mile journey: power cut, road heat, overnight PHC freeze missed by the manual logbook | Reconstructed from published Indian cold-chain findings | Not raw data; labelled as reconstructed |
 

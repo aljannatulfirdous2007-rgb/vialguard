@@ -1,0 +1,436 @@
+{
+  "keyword_router (tuning set)": {
+    "correct": 12,
+    "total": 12,
+    "seconds_per_question": 0.0,
+    "cases": [
+      {
+        "question": "Did fridge BLD26-001 ever go above 8 \u00b0C?",
+        "expected": [
+          "query_telemetry_db"
+        ],
+        "got": [
+          "query_telemetry_db"
+        ],
+        "correct": true
+      },
+      {
+        "question": "What is the temperature of MHT2025-001 right now?",
+        "expected": [
+          "query_telemetry_db"
+        ],
+        "got": [
+          "query_telemetry_db"
+        ],
+        "correct": true
+      },
+      {
+        "question": "Give me a summary of the freezer ULT26-001",
+        "expected": [
+          "query_telemetry_db"
+        ],
+        "got": [
+          "query_telemetry_db"
+        ],
+        "correct": true
+      },
+      {
+        "question": "What will BLD26-001 be in 10 minutes?",
+        "expected": [
+          "get_forecast"
+        ],
+        "got": [
+          "get_forecast"
+        ],
+        "correct": true
+      },
+      {
+        "question": "Forecast for MHT2025-001",
+        "expected": [
+          "get_forecast"
+        ],
+        "got": [
+          "get_forecast"
+        ],
+        "correct": true
+      },
+      {
+        "question": "Has anyone tampered with the freezer records?",
+        "expected": [
+          "audit_hash_chain"
+        ],
+        "got": [
+          "audit_hash_chain"
+        ],
+        "correct": true
+      },
+      {
+        "question": "Can I trust the BLD26-001 log, was it edited?",
+        "expected": [
+          "audit_hash_chain"
+        ],
+        "got": [
+          "audit_hash_chain"
+        ],
+        "correct": true
+      },
+      {
+        "question": "What does WHO say about freezing vaccines?",
+        "expected": [
+          "search_compliance_sop"
+        ],
+        "got": [
+          "search_compliance_sop"
+        ],
+        "correct": true
+      },
+      {
+        "question": "What is mean kinetic temperature?",
+        "expected": [
+          "search_compliance_sop"
+        ],
+        "got": [
+          "search_compliance_sop"
+        ],
+        "correct": true
+      },
+      {
+        "question": "BLD26-001 went above 8 \u00b0C, what should we do?",
+        "expected": [
+          "query_telemetry_db",
+          "search_compliance_sop"
+        ],
+        "got": [
+          "query_telemetry_db",
+          "search_compliance_sop"
+        ],
+        "correct": true
+      },
+      {
+        "question": "Is MHT2025-001 safe right now and will it stay safe?",
+        "expected": [
+          "get_forecast",
+          "query_telemetry_db"
+        ],
+        "got": [
+          "get_forecast",
+          "query_telemetry_db"
+        ],
+        "correct": true
+      },
+      {
+        "question": "Check BLD26-001 for excursions and tampering",
+        "expected": [
+          "audit_hash_chain",
+          "query_telemetry_db"
+        ],
+        "got": [
+          "audit_hash_chain",
+          "query_telemetry_db"
+        ],
+        "correct": true
+      }
+    ]
+  },
+  "keyword_router (held-out)": {
+    "correct": 7,
+    "total": 8,
+    "seconds_per_question": 0.0,
+    "cases": [
+      {
+        "question": "How cold is the ULT26-001 freezer at the moment?",
+        "expected": [
+          "query_telemetry_db"
+        ],
+        "got": [
+          "query_telemetry_db"
+        ],
+        "correct": true
+      },
+      {
+        "question": "Were there any temperature breaches in MHT2025-001?",
+        "expected": [
+          "query_telemetry_db"
+        ],
+        "got": [
+          "query_telemetry_db"
+        ],
+        "correct": true
+      },
+      {
+        "question": "Predict the next reading for BLD26-001",
+        "expected": [
+          "get_forecast"
+        ],
+        "got": [
+          "get_forecast"
+        ],
+        "correct": true
+      },
+      {
+        "question": "Is the hash chain for MHT2025-001 intact?",
+        "expected": [
+          "audit_hash_chain"
+        ],
+        "got": [
+          "audit_hash_chain"
+        ],
+        "correct": true
+      },
+      {
+        "question": "What are the storage guidelines for insulin?",
+        "expected": [
+          "search_compliance_sop"
+        ],
+        "got": [
+          "search_compliance_sop"
+        ],
+        "correct": true
+      },
+      {
+        "question": "How many door openings did BLD26-001 have?",
+        "expected": [
+          "query_telemetry_db"
+        ],
+        "got": [
+          "query_telemetry_db"
+        ],
+        "correct": true
+      },
+      {
+        "question": "MHT2025-001 had an excursion, what is the procedure?",
+        "expected": [
+          "query_telemetry_db",
+          "search_compliance_sop"
+        ],
+        "got": [
+          "query_telemetry_db"
+        ],
+        "correct": false
+      },
+      {
+        "question": "Show the current reading of BLD26-001 and whether its log was manipulated",
+        "expected": [
+          "audit_hash_chain",
+          "query_telemetry_db"
+        ],
+        "got": [
+          "audit_hash_chain",
+          "query_telemetry_db"
+        ],
+        "correct": true
+      }
+    ]
+  },
+  "llm qwen2.5-coder:1.5b (tuning set)": {
+    "correct": 7,
+    "total": 12,
+    "seconds_per_question": 3.39,
+    "cases": [
+      {
+        "question": "Did fridge BLD26-001 ever go above 8 \u00b0C?",
+        "expected": [
+          "query_telemetry_db"
+        ],
+        "got": [
+          "query_telemetry_db"
+        ],
+        "correct": true
+      },
+      {
+        "question": "What is the temperature of MHT2025-001 right now?",
+        "expected": [
+          "query_telemetry_db"
+        ],
+        "got": [],
+        "correct": false
+      },
+      {
+        "question": "Give me a summary of the freezer ULT26-001",
+        "expected": [
+          "query_telemetry_db"
+        ],
+        "got": [
+          "search_compliance_sop"
+        ],
+        "correct": false
+      },
+      {
+        "question": "What will BLD26-001 be in 10 minutes?",
+        "expected": [
+          "get_forecast"
+        ],
+        "got": [
+          "get_forecast"
+        ],
+        "correct": true
+      },
+      {
+        "question": "Forecast for MHT2025-001",
+        "expected": [
+          "get_forecast"
+        ],
+        "got": [
+          "get_forecast"
+        ],
+        "correct": true
+      },
+      {
+        "question": "Has anyone tampered with the freezer records?",
+        "expected": [
+          "audit_hash_chain"
+        ],
+        "got": [
+          "audit_hash_chain"
+        ],
+        "correct": true
+      },
+      {
+        "question": "Can I trust the BLD26-001 log, was it edited?",
+        "expected": [
+          "audit_hash_chain"
+        ],
+        "got": [
+          "audit_hash_chain"
+        ],
+        "correct": true
+      },
+      {
+        "question": "What does WHO say about freezing vaccines?",
+        "expected": [
+          "search_compliance_sop"
+        ],
+        "got": [
+          "search_compliance_sop"
+        ],
+        "correct": true
+      },
+      {
+        "question": "What is mean kinetic temperature?",
+        "expected": [
+          "search_compliance_sop"
+        ],
+        "got": [
+          "search_compliance_sop"
+        ],
+        "correct": true
+      },
+      {
+        "question": "BLD26-001 went above 8 \u00b0C, what should we do?",
+        "expected": [
+          "query_telemetry_db",
+          "search_compliance_sop"
+        ],
+        "got": [
+          "search_compliance_sop"
+        ],
+        "correct": false
+      },
+      {
+        "question": "Is MHT2025-001 safe right now and will it stay safe?",
+        "expected": [
+          "get_forecast",
+          "query_telemetry_db"
+        ],
+        "got": [
+          "search_compliance_sop"
+        ],
+        "correct": false
+      },
+      {
+        "question": "Check BLD26-001 for excursions and tampering",
+        "expected": [
+          "audit_hash_chain",
+          "query_telemetry_db"
+        ],
+        "got": [
+          "query_telemetry_db"
+        ],
+        "correct": false
+      }
+    ]
+  },
+  "llm qwen2.5-coder:1.5b (held-out)": {
+    "correct": 2,
+    "total": 8,
+    "seconds_per_question": 3.57,
+    "cases": [
+      {
+        "question": "How cold is the ULT26-001 freezer at the moment?",
+        "expected": [
+          "query_telemetry_db"
+        ],
+        "got": [],
+        "correct": false
+      },
+      {
+        "question": "Were there any temperature breaches in MHT2025-001?",
+        "expected": [
+          "query_telemetry_db"
+        ],
+        "got": [
+          "search_compliance_sop"
+        ],
+        "correct": false
+      },
+      {
+        "question": "Predict the next reading for BLD26-001",
+        "expected": [
+          "get_forecast"
+        ],
+        "got": [
+          "get_forecast"
+        ],
+        "correct": true
+      },
+      {
+        "question": "Is the hash chain for MHT2025-001 intact?",
+        "expected": [
+          "audit_hash_chain"
+        ],
+        "got": [
+          "audit_hash_chain"
+        ],
+        "correct": true
+      },
+      {
+        "question": "What are the storage guidelines for insulin?",
+        "expected": [
+          "search_compliance_sop"
+        ],
+        "got": [],
+        "correct": false
+      },
+      {
+        "question": "How many door openings did BLD26-001 have?",
+        "expected": [
+          "query_telemetry_db"
+        ],
+        "got": [
+          "audit_hash_chain"
+        ],
+        "correct": false
+      },
+      {
+        "question": "MHT2025-001 had an excursion, what is the procedure?",
+        "expected": [
+          "query_telemetry_db",
+          "search_compliance_sop"
+        ],
+        "got": [
+          "search_compliance_sop"
+        ],
+        "correct": false
+      },
+      {
+        "question": "Show the current reading of BLD26-001 and whether its log was manipulated",
+        "expected": [
+          "audit_hash_chain",
+          "query_telemetry_db"
+        ],
+        "got": [],
+        "correct": false
+      }
+    ]
+  }
+}
