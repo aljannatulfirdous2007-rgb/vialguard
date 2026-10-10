@@ -114,6 +114,7 @@ def main():
                              base_score=0.0)   # explicit: m2cgen cannot read XGBoost 3 default intercept
     model.fit(Xtr, ytr - Xtr.t_lag0.values)
     preds["xgboost"] = Xte.t_lag0.values + model.predict(Xte)
+    model.save_model(os.path.join(ROOT, "data", "ml_xgb.json"))   # used by pipeline/stream_processor.py
 
     report = {"dataset": "zenodo.22101912", "horizon_min": HORIZON, "train_rows": len(tr), "test_rows": len(te),
               "split": "time-based, last 25% of each fridge held out", "features": FEATURES,

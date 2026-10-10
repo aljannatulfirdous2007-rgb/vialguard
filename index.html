@@ -291,7 +291,7 @@
         <div><i class="ph ph-flask"></i><p><b>Automated tests</b><span>Model, detector, forecast, routing, assistant, and parity tests so the phone version and the exported XGBoost trees match the Python reference.</span></p></div>
         <div><i class="ph ph-database"></i><p><b>Real data, real weather</b><span>Detector calibrated on a public hospital cold-chain dataset (Zenodo, CC BY 4.0). Route forecast uses live Open-Meteo weather.</span></p></div>
         <div><i class="ph ph-cpu"></i><p><b>Runs on a ₹400 chip</b><span>The same model compiles for the ESP32, so the verdict works offline inside the box.</span></p></div>
-        <div><i class="ph ph-tree-structure"></i><p><b>Built to scale</b><span>Production design: MQTT, Kafka and InfluxDB in front of the same engine. See <a href="docs/ARCHITECTURE.md">architecture</a>.</span></p></div>
+        <div><i class="ph ph-tree-structure"></i><p><b>Built to scale</b><span>A Kafka to InfluxDB pipeline already runs locally: 16,311 real readings streamed, hash chains checked (0 breaks), XGBoost and LSTM forecasts stored. See <a href="docs/ARCHITECTURE.md">architecture</a>.</span></p></div>
         <div><i class="ph ph-github-logo"></i><p><b>Open source</b><span>Every line is public on <a href="https://github.com/aljannatulfirdous2007-rgb/vialguard">GitHub</a>.</span></p></div>
       </div>
     </section>

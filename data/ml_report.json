@@ -52,6 +52,15 @@
       "excursions": 0,
       "excursions_caught": 0,
       "false_alarms": 0
+    },
+    "lstm": {
+      "mae": 0.153,
+      "p90_error": 0.289,
+      "excursions": 0,
+      "excursions_caught": 0,
+      "false_alarms": 0,
+      "epochs": 12,
+      "test_rows": 2773
     }
   },
   "xgboost_top_features": [
