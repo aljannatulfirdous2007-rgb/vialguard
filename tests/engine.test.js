@@ -45,3 +45,21 @@ while (d2.replay) d2.step(1);
 assert.strictEqual(d2.tr.verdict(), "DISCARD_FROZEN");
 
 console.log("engine.js: all parity tests passed");
+
+// 7. early freeze warning + root cause, same behaviour as the Python simulator
+const d3 = new E.Device(null);
+for (let i = 0; i < 4; i++) d3.step(1);
+d3.command({ env: "freeze" });
+let warned = null;
+for (let i = 0; i < 12 && !d3.tr.frozen; i++) { d3.step(1); if (d3.breach && !warned) warned = { t: d3.temp, ...d3.breach }; }
+assert.ok(warned && warned.kind === "freeze" && warned.t > 0, "freeze predicted before 0 °C");
+assert.strictEqual(d3.state().cause.code, d3.tr.frozen ? "OVERCOOLING" : d3.state().cause.code);
+// saving the vials: warning, then back to the cold box, never freezes
+const d4 = new E.Device(null);
+for (let i = 0; i < 4; i++) d4.step(1);
+d4.command({ env: "freeze" });
+for (let i = 0; i < 12; i++) { d4.step(1); if (d4.breach) break; }
+d4.command({ env: "cold" });
+for (let i = 0; i < 30; i++) d4.step(1);
+assert.strictEqual(d4.tr.frozen, false, "acting on the warning saves the vials");
+console.log("engine.js: early-warning tests passed");

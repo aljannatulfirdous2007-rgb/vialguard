@@ -8,16 +8,18 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23040a10'/%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%2341f0ff' stroke-width='2' stroke-dasharray='4 3'/%3E%3Crect x='12.5' y='8' width='7' height='16' rx='2' fill='none' stroke='%2341f0ff' stroke-width='1.6'/%3E%3Crect x='13.5' y='15' width='5' height='8' fill='%2341f0ff'/%3E%3C/svg%3E">
   <link rel="preload" href="vendor/fonts/oxanium-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="vendor/fonts/jetbrains-mono-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="vendor/phosphor/style.css">
   <link rel="stylesheet" href="vendor/phosphor/fill.css">
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=6">
   <script>
     try { document.documentElement.dataset.theme = localStorage.getItem("vg-hud-theme") === "dark" ? "dark" : "light"; } catch (e) { document.documentElement.dataset.theme = "light"; }
   </script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" defer></script>
   <script src="vendor/chart.umd.min.js" defer></script>
-  <script src="chain.js?v=4" defer></script>
-  <script src="engine.js?v=4" defer></script>
-  <script src="app.js?v=4" defer></script>
+  <script src="chain.js?v=6" defer></script>
+  <script src="engine.js?v=6" defer></script>
+  <script src="app.js?v=6" defer></script>
 </head>
 <body data-verdict="idle">
   <div class="fx-grid" aria-hidden="true"></div>
@@ -186,12 +188,14 @@
       <div class="route mono"><span id="rtFrom">--</span><i class="ph ph-arrow-right"></i><span id="rtTo">--</span></div>
       <div class="route-bar"><div id="rtBar"></div><i id="rtDot" class="ph-fill ph-truck"></i></div>
       <div class="route-meta mono"><span id="rtEta">ETA --</span><span id="rtKm">--</span></div>
+      <div class="breach-warn" id="breachWarn" hidden><i class="ph-fill ph-warning-diamond"></i><div><b id="breachTitle">--</b><span id="breachSub">--</span></div></div>
       <div class="fc-big"><b id="fcLife">--</b><small>%</small><span>predicted medicine life<br>on arrival</span></div>
       <p class="fc-note" id="fcNote">Physics forecast: probe trend + live outdoor temperature on the route.</p>
     </section>
 
     <section class="panel integ" aria-label="Courier integrity">
       <header class="ph-head"><span>◢ CUSTODY INTEGRITY</span><span class="mono" id="integMode">LIVE SHIPMENT</span></header>
+      <div class="cause" id="cause" hidden><span class="mono">ROOT CAUSE</span><b id="causeText">--</b></div>
       <div class="trust"><b id="trust">100</b><span>/100<br>custody score</span></div>
       <dl class="kv" id="integKv">
         <div><dt>LOGGED OPENINGS</dt><dd id="inLogged">0</dd></div>
@@ -216,6 +220,12 @@
       <button class="ack act-btn" id="rerouteBtn" hidden><span id="rerouteLabel">APPLY RE-ROUTE</span></button>
       <div class="alts" id="alts"></div>
       <div class="order mono" id="order" hidden></div>
+    </section>
+
+    <!-- ============================================================ route map -->
+    <section class="panel mapp" id="mapPanel" aria-label="Route map">
+      <header class="ph-head"><span>◢ LIVE ROUTE // CHENNAI TO TIRUVANNAMALAI</span><span class="mono" id="mapNote">TRUCK, HOSPITALS AND DIVERSION</span></header>
+      <div id="map" class="map"></div>
     </section>
 
     <!-- ============================================================ telemetry -->

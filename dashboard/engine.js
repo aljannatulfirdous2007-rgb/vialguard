@@ -73,6 +73,30 @@
       return flags;
     }
     trust() { return Math.max(0, 100 - 12 * this.unexplained - 25 * this.cooling); }
+    // early warning: line through the last 4 readings, minutes until it crosses 8 °C or 0 °C
+    predictBreach(horizon = 90) {
+      const pts = this.hist.slice(-4);
+      if (pts.length < 3) return null;
+      const tNow = pts[pts.length - 1][1];
+      if (!(tNow > 0 && tNow <= 8)) return null;
+      const n = pts.length, mx = pts.reduce((a, [x]) => a + x, 0) / n, my = pts.reduce((a, [, y]) => a + y, 0) / n;
+      const den = pts.reduce((a, [x]) => a + (x - mx) ** 2, 0);
+      if (!den) return null;
+      const slope = pts.reduce((a, [x, y]) => a + (x - mx) * (y - my), 0) / den;
+      if (Math.abs(slope) < 0.01) return null;
+      const [target, kind] = slope > 0 ? [8, "heat"] : [0, "freeze"];
+      const minutes = (target - tNow) / slope;
+      return minutes > 0 && minutes <= horizon ? { kind, minutes: +minutes.toFixed(1), rate: +(slope * 60).toFixed(2) } : null;
+    }
+  }
+  function rootCause(temp, lid, moving, recent, frozen, excursion) {
+    const r = recent.slice(-3);
+    if (frozen || temp <= 0) return { code: "OVERCOOLING", text: "Over-cooling: vials touching ice packs or a fridge thermostat set too cold" };
+    if (lid && (excursion || r.includes("ACCESS_LOGGED"))) return { code: "DOOR_OPEN", text: "Box or door left open: warm air entering" };
+    if (r.includes("ACCESS_SUSPECTED")) return { code: "UNLOGGED_OPENING", text: "Box opened without a logged reason (temperature jump, then recovery)" };
+    if (excursion && !moving) return { code: "STATIONARY_HEAT", text: "Vehicle stationary in heat: cold box warming toward outside temperature" };
+    if (r.includes("COOLING_FAILURE") || excursion) return { code: "COOLING_FAILURE", text: "Cooling failure: steady climb with no recovery (ice packs spent or unit off)" };
+    return { code: null, text: null };
   }
 
   // ------------------------------------------------------------------ forecast + routing
@@ -188,6 +212,7 @@
       this.excursion = this.w50 = this.w20 = this.discardSent = false;
       this.alertActive = false; this.acked = false; this.level = -1; this.severity = 0; this.reason = ""; this.levelSince = 0;
       this.replay = null; this.paused = false; this.det = new Detector(); this.modelMin = 0; this.lastFlags = [];
+      this.prewarn = null; this.breach = null;
       this.trip = { dest: DEFAULT_DEST, done: 0, total: etaH(ORIGIN, fac(DEFAULT_DEST)), start: { ...ORIGIN }, delivered: false, rerouted: false };
       this.realscore = null;
     }
@@ -287,6 +312,13 @@
         if (f === "ACCESS_SUSPECTED") this.raise(1, "Box opened without a logged reason (temperature signature)");
         else if (f === "COOLING_FAILURE") this.raise(2, "Cooling failure suspected: steady climb with no recovery");
       }
+      this.breach = this.det.predictBreach();
+      if (this.breach && this.prewarn !== this.breach.kind) {
+        this.prewarn = this.breach.kind;
+        const m = Math.round(this.breach.minutes);
+        if (this.breach.kind === "freeze") { this.events.push("PREDICT_FREEZE"); this.raise(1, `Freeze predicted in ${m} min: move vials away from ice packs now`); }
+        else { this.events.push("PREDICT_HEAT"); this.raise(1, `8 C breach predicted in ${m} min: check the cooling now`); }
+      } else if (!this.breach && t >= 2 && t <= 8) this.prewarn = null;
       const moving = !["heat", "room"].includes(this.envMode);
       if (!this.replay && !this.trip.delivered && moving) {
         this.trip.done += dtH;
@@ -334,10 +366,12 @@
         alert_level: this.alertActive ? this.level : -1, acked: this.acked ? 1 : 0, alert_reason: this.reason,
         scale: SCALE, ship: this.ship, rssi: -55, fw: "sim-browser", env_mode: this.envMode,
         replay: this.replayProgress(), replay_done: this.paused ? 1 : 0, replay_kind: this.replay ? this.replay.kind : null,
-        trip: { origin: ORIGIN.name, dest: d.name, dest_id: d.id, done_h: this.trip.done, total_h: this.trip.total, delivered: this.trip.delivered, rerouted: this.trip.rerouted },
+        trip: { origin: ORIGIN.name, dest: d.name, dest_id: d.id, done_h: this.trip.done, total_h: this.trip.total, delivered: this.trip.delivered, rerouted: this.trip.rerouted, pos: this.position() },
         forecast: this.plan(),
         behavior: { trust: this.det.trust(), access: this.det.access, unexplained: this.det.unexplained, cooling: this.det.cooling, recent: this.lastFlags },
         realscore: rs ? { labels: rs.labels.length, hits: rs.hits.length, matched: rs.matched, unconfirmed: rs.unconfirmed, missed: rs.missed } : null,
+        breach: this.breach,
+        cause: rootCause(this.temp, this.lid, !["heat", "room"].includes(this.envMode), this.lastFlags, this.tr.frozen, this.excursion),
         weather: { source: this.weatherSrc, outdoor_c: this.weather ? +this.outdoor().toFixed(1) : null },
       };
     }
@@ -390,7 +424,7 @@
     }
   }
 
-  const api = { PROFILES, Tracker, Detector, rate, plan, predictPath, lifeAfter, etaH, km, FACILITIES, ORIGIN, buildFieldTrace, Device, BrowserDB };
+  const api = { rootCause, PROFILES, Tracker, Detector, rate, plan, predictPath, lifeAfter, etaH, km, FACILITIES, ORIGIN, buildFieldTrace, Device, BrowserDB };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.VGEngine = api;
 })(typeof window !== "undefined" ? window : globalThis);

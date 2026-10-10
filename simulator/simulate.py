@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import field_trace
 import real_data
 import forecast
-from behavior import BehaviorDetector
+from behavior import BehaviorDetector, root_cause
 from vialguard_model import (CRIT_PCT, GENESIS, PROFILES, UPPER_LIMIT_C, WARN_PCT, MKT_EA_OVER_R, Tracker,
                              record_hash)
 
@@ -97,6 +97,7 @@ class SimDevice:
         self.det = BehaviorDetector()
         self.model_min = 0.0
         self.last_flags = []
+        self.prewarn, self.breach = None, None
         self.trip = {"dest": forecast.DEFAULT_DEST, "done_h": 0.0,
                      "total_h": forecast.eta_h(forecast.ORIGIN, next(f for f in forecast.FACILITIES if f["id"] == forecast.DEFAULT_DEST)),
                      "start": dict(forecast.ORIGIN), "delivered": False, "rerouted": False}
@@ -278,6 +279,19 @@ class SimDevice:
                 self.raise_alert(1, "Box opened without a logged reason (temperature signature)")
             elif f == "COOLING_FAILURE":
                 self.raise_alert(2, "Cooling failure suspected: steady climb with no recovery")
+        # early warning: trend says we will cross 8 °C or 0 °C soon
+        self.breach = self.det.predict_breach()
+        if self.breach and self.prewarn != self.breach["kind"]:
+            self.prewarn = self.breach["kind"]
+            m = round(self.breach["minutes"])
+            if self.breach["kind"] == "freeze":
+                self.events.append("PREDICT_FREEZE")
+                self.raise_alert(1, f"Freeze predicted in {m} min: move vials away from ice packs now")
+            else:
+                self.events.append("PREDICT_HEAT")
+                self.raise_alert(1, f"8 C breach predicted in {m} min: check the cooling now")
+        elif not self.breach and 2.0 <= t <= 8.0:
+            self.prewarn = None
         moving = self.env_mode not in ("heat", "room")   # truck stall / left out = the package is not moving
         if not self.replay and not self.trip["delivered"] and moving:
             self.trip["done_h"] += dt_model_h
@@ -332,6 +346,9 @@ class SimDevice:
                 "behavior": {"trust": self.det.trust_score(), "access": self.det.access_events, "unexplained": self.det.unexplained_access,
                              "cooling": self.det.cooling_events, "recent": self.last_flags},
                 "realscore": None if not self.realscore else {k: (len(v) if isinstance(v, list) else v) for k, v in self.realscore.items()},
+                "breach": self.breach,
+                "cause": dict(zip(("code", "text"), root_cause(self.temp, self.lid, self.env_mode not in ("heat", "room"),
+                                                                 self.last_flags, self.tr.frozen, self.excursion))),
                 "weather": {"source": self.weather_src, "outdoor_c": round(self.outdoor_now(), 1) if self.weather else None}}
 
     def replay_progress(self):

@@ -22,6 +22,9 @@ COOLDOWN_MIN = 6.0         # one opening produces one flag
 SLOPE_WINDOW_MIN = 30.0
 SLOPE_C_PER_MIN = 0.04     # 2.4 °C per hour sustained climb
 SLOPE_ABOVE_C = 1.5
+PREDICT_POINTS = 4            # readings used for the trend line
+PREDICT_MIN_SLOPE = 0.01      # °C per minute (0.6 °C per hour); slower drifts are noise
+PREDICT_HORIZON_MIN = 90.0    # only warn about breaches expected within 90 minutes
 
 
 class BehaviorDetector:
@@ -77,3 +80,47 @@ class BehaviorDetector:
     def trust_score(self):
         """0-100 custody score: drops for unexplained openings and cooling failures."""
         return max(0, 100 - 12 * self.unexplained_access - 25 * self.cooling_events)
+
+    def predict_breach(self, horizon_min=PREDICT_HORIZON_MIN):
+        """Early warning: fit a line to the last few readings and say when it will cross 8 °C or 0 °C.
+
+        Returns None, or {"kind": "heat"|"freeze", "minutes": m, "rate": °C per hour}.
+        Only warns while the probe is still inside 0-8 °C, i.e. BEFORE the breach.
+        """
+        pts = list(self.hist)[-PREDICT_POINTS:]
+        if len(pts) < 3:
+            return None
+        t_now = pts[-1][1]
+        if not (0.0 < t_now <= 8.0):
+            return None
+        n = len(pts)
+        mx = sum(m for m, _ in pts) / n
+        my = sum(t for _, t in pts) / n
+        den = sum((m - mx) ** 2 for m, _ in pts)
+        if den == 0:
+            return None
+        slope = sum((m - mx) * (t - my) for m, t in pts) / den        # °C per minute
+        if abs(slope) < PREDICT_MIN_SLOPE:
+            return None
+        target, kind = (8.0, "heat") if slope > 0 else (0.0, "freeze")
+        minutes = (target - t_now) / slope
+        if 0 < minutes <= horizon_min:
+            return {"kind": kind, "minutes": round(minutes, 1), "rate": round(slope * 60, 2)}
+        return None
+
+
+
+def root_cause(temp, lid_open, moving, recent_flags, frozen, excursion):
+    """Combine the signals into one plain-language cause. Returns (code, text) or (None, None)."""
+    recent = recent_flags[-3:]
+    if frozen or temp <= 0:
+        return ("OVERCOOLING", "Over-cooling: vials touching ice packs or a fridge thermostat set too cold")
+    if lid_open and (excursion or "ACCESS_LOGGED" in recent):
+        return ("DOOR_OPEN", "Box or door left open: warm air entering")
+    if "ACCESS_SUSPECTED" in recent:
+        return ("UNLOGGED_OPENING", "Box opened without a logged reason (temperature jump, then recovery)")
+    if excursion and not moving:
+        return ("STATIONARY_HEAT", "Vehicle stationary in heat: cold box warming toward outside temperature")
+    if "COOLING_FAILURE" in recent or excursion:
+        return ("COOLING_FAILURE", "Cooling failure: steady climb with no recovery (ice packs spent or unit off)")
+    return (None, None)

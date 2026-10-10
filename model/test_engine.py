@@ -66,3 +66,36 @@ class ForecastTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PredictorTests(unittest.TestCase):
+    def test_slow_cooling_toward_freeze_is_warned_before_zero(self):
+        from behavior import BehaviorDetector
+        d = BehaviorDetector()
+        warn = None
+        for m in range(0, 120, 6):                      # -0.4 °C per 6 min from 5 °C
+            t = 5.0 - 0.4 * m / 6
+            d.update(m, t)
+            p = d.predict_breach()
+            if p and warn is None:
+                warn = (t, p)
+        self.assertIsNotNone(warn)
+        t_at_warning, p = warn
+        self.assertEqual(p["kind"], "freeze")
+        self.assertGreater(t_at_warning, 0)              # warned while still above 0 °C
+        self.assertGreater(p["minutes"], 0)
+
+    def test_flat_temperature_predicts_nothing(self):
+        from behavior import BehaviorDetector
+        d = BehaviorDetector()
+        for m in range(0, 60, 6):
+            d.update(m, 5.0)
+        self.assertIsNone(d.predict_breach())
+
+    def test_root_cause_rules(self):
+        from behavior import root_cause
+        self.assertEqual(root_cause(-1, False, True, [], True, False)[0], "OVERCOOLING")
+        self.assertEqual(root_cause(12, True, True, [], False, True)[0], "DOOR_OPEN")
+        self.assertEqual(root_cause(12, False, False, [], False, True)[0], "STATIONARY_HEAT")
+        self.assertEqual(root_cause(12, False, True, ["COOLING_FAILURE"], False, True)[0], "COOLING_FAILURE")
+        self.assertEqual(root_cause(5, False, True, [], False, False)[0], None)

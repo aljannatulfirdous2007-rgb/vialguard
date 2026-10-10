@@ -120,11 +120,11 @@ const EVENTS = {
   REPLAY_START: ["FIELD TRACE REPLAY", ""], REPLAY_END: ["REPLAY COMPLETE", ""],
   ACCESS_SUSPECTED: ["UNLOGGED OPENING SUSPECTED", "bad"], ACCESS_LOGGED: ["OPENING (LOGGED)", ""],
   COOLING_FAILURE: ["COOLING FAILURE SIGNATURE", "bad"], REROUTED: ["RE-ROUTED", "good"], DELIVERED: ["DELIVERED", "good"],
-  REAL_DATA_START: ["REAL FRIDGE DATA (ZENODO)", ""], DOOR_LABEL: ["REAL DOOR OPENED (LABEL)", "cold"],
+  REAL_DATA_START: ["REAL FRIDGE DATA (ZENODO)", ""], PREDICT_FREEZE: ["FREEZE PREDICTED (EARLY WARNING)", "cold"], PREDICT_HEAT: ["BREACH PREDICTED (EARLY WARNING)", "warn"], DOOR_LABEL: ["REAL DOOR OPENED (LABEL)", "cold"],
   PH_STORE: ["AT DISTRICT STORE", ""], PH_POWERCUT: ["POWER CUT AT STORE", "warn"], PH_TRANSIT: ["ON THE ROAD", ""],
   PH_DELAY: ["STUCK IN HEAT", "warn"], PH_PHC: ["IN PHC FRIDGE", ""], PH_NIGHTFREEZE: ["FRIDGE OVER-COOLING", "cold"],
 };
-const MARKER_EVENTS = new Set(["ACCESS_SUSPECTED", "DOOR_LABEL", "COOLING_FAILURE", "REROUTED", "LOGBOOK_CHECK", "EXCURSION_START", "EXCURSION_END", "FROZEN", "ALERT_L0", "ALERT_L1", "ALERT_L2", "ACK", "LID_OPEN", "DISCARD"]);
+const MARKER_EVENTS = new Set(["PREDICT_FREEZE", "PREDICT_HEAT", "ACCESS_SUSPECTED", "DOOR_LABEL", "COOLING_FAILURE", "REROUTED", "LOGBOOK_CHECK", "EXCURSION_START", "EXCURSION_END", "FROZEN", "ALERT_L0", "ALERT_L1", "ALERT_L2", "ACK", "LID_OPEN", "DISCARD"]);
 
 // ---------------------------------------------------------------- telemetry chart
 let chart = null, markers = [];
@@ -281,6 +281,9 @@ function renderState(s) {
   renderCore(s, life);
   renderControls(s);
   renderPredict(s);
+  renderWarnings(s);
+  initMap();
+  renderMap(s);
 }
 
 function renderCore(s, life) {
@@ -452,6 +455,51 @@ function renderPredict(s) {
   if (rs) { $("rsLabels").textContent = rs.labels; $("rsMatched").textContent = rs.matched; $("rsUnconf").textContent = rs.unconfirmed; $("rsMissed").textContent = rs.missed; }
   $("realBtn").setAttribute("aria-pressed", String(s.replay_kind === "real"));
 }
+
+// ---------------------------------------------------------------- live route map (Leaflet + OpenStreetMap tiles)
+const FAC = [
+  ["DVS", "District Vaccine Store, Egmore", 13.0733, 80.2610], ["SPK", "PHC Sriperumbudur", 12.9675, 79.9419],
+  ["CGL", "GH Chengalpattu", 12.6921, 79.9707], ["KPM", "GH Kanchipuram", 12.8342, 79.7036], ["CYR", "GH Cheyyar", 12.6620, 79.5433],
+  ["VDV", "GH Vandavasi", 12.5040, 79.6193], ["TVM", "GH Tiruvannamalai", 12.2253, 79.0747],
+];
+let map = null, mapLayers = null, truck = null;
+function initMap() {
+  if (map || typeof L === "undefined") { if (typeof L === "undefined") $("mapPanel").hidden = true; return; }
+  map = L.map("map", { zoomControl: true, attributionControl: true, scrollWheelZoom: false }).setView([12.7, 79.7], 9);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 14, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(map);
+  FAC.forEach(([id, name, lat, lon]) => L.circleMarker([lat, lon], { radius: 6, color: css("--hud"), weight: 2, fillColor: "#fff", fillOpacity: 1 })
+    .bindTooltip(name, { direction: "top" }).addTo(map));
+  mapLayers = L.layerGroup().addTo(map);
+  truck = L.marker([13.0733, 80.2610], { icon: L.divIcon({ className: "", html: '<div class="vg-truck"><i class="ph-fill ph-truck"></i></div>', iconSize: [34, 34], iconAnchor: [17, 17] }) }).addTo(map);
+  map.fitBounds(FAC.map((f) => [f[2], f[3]]), { padding: [24, 24] });
+}
+function renderMap(s) {
+  if (!map || !s.trip || !s.trip.pos) return;
+  const pos = [s.trip.pos.lat, s.trip.pos.lon];
+  const dest = FAC.find((f) => f[0] === s.trip.dest_id);
+  mapLayers.clearLayers();
+  if (dest) L.polyline([pos, [dest[2], dest[3]]], { color: css("--hud"), weight: 4, opacity: .85 }).addTo(mapLayers);
+  const rr = s.forecast && s.forecast.reroute && FAC.find((f) => f[0] === s.forecast.reroute.id);
+  if (rr) L.polyline([pos, [rr[2], rr[3]]], { color: css("--warn"), weight: 4, dashArray: "8 8" }).addTo(mapLayers)
+    .bindTooltip(`Divert: ${rr[1]}`, { permanent: true, direction: "center", className: "" });
+  truck.setLatLng(pos);
+  truck.getElement()?.querySelector(".vg-truck")?.classList.toggle("warn", !!(s.forecast && !s.forecast.will_survive));
+}
+function renderWarnings(s) {
+  const b = s.breach, w = $("breachWarn");
+  w.hidden = !b;
+  if (b) {
+    w.className = `breach-warn ${b.kind}`;
+    $("breachTitle").textContent = b.kind === "freeze" ? `FREEZE PREDICTED IN ${Math.round(b.minutes)} MIN` : `8 °C BREACH IN ${Math.round(b.minutes)} MIN`;
+    $("breachSub").textContent = b.kind === "freeze" ? "Act now: move vials off the ice packs (try COLD BOX)" : `Warming ${b.rate} °C per hour. Check the cooling now.`;
+  }
+  const c = s.cause || {};
+  $("cause").hidden = !c.code;
+  if (c.code) $("causeText").textContent = c.text;
+}
+
 $("rerouteBtn").addEventListener("click", () => { const id = $("rerouteBtn").dataset.id; if (id) sendCmd({ reroute: id }); });
 $("realBtn").addEventListener("click", () => sendCmd({ real: true }));
 
